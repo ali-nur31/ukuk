@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/auth.routes');
+const professionalRoutes = require('./routes/professional.routes');
+const professionalTypeRoutes = require('./routes/professionalType.routes');
 
 const app = express();
 
@@ -12,6 +14,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/professionals', professionalRoutes);
+app.use('/api/professional-types', professionalTypeRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

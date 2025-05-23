@@ -1,12 +1,12 @@
-const checkRole = (role) => {
+const checkRole = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      return res.status(401).json({ message: 'Not authorized' });
     }
 
-    if (req.user.role !== role) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({ 
-        message: `Access denied. Required role: ${role}` 
+        message: `User role ${req.user.role} is not authorized to access this route`
       });
     }
 
@@ -14,6 +14,4 @@ const checkRole = (role) => {
   };
 };
 
-module.exports = {
-  checkRole
-}; 
+module.exports = { checkRole }; 

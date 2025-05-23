@@ -1,27 +1,38 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { Model } = require('sequelize');
 
-const ProfessionalType = sequelize.define('ProfessionalType', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
-  },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  icon: {
-    type: DataTypes.STRING,
-    allowNull: true
+module.exports = (sequelize, DataTypes) => {
+  class ProfessionalType extends Model {
+    static associate(models) {
+      ProfessionalType.hasMany(models.Professional, {
+        foreignKey: 'professionalTypeId',
+        as: 'professionals'
+      });
+    }
   }
-}, {
-  timestamps: true
-});
 
-module.exports = ProfessionalType; 
+  ProfessionalType.init({
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
+    description: {
+      type: DataTypes.TEXT
+    },
+    icon: {
+      type: DataTypes.STRING
+    }
+  }, {
+    sequelize,
+    modelName: 'ProfessionalType',
+    tableName: 'ProfessionalTypes',
+    timestamps: true
+  });
+
+  return ProfessionalType;
+}; 

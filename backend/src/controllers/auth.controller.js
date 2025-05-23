@@ -1,18 +1,65 @@
 const jwt = require('jsonwebtoken');
 const { User, Professional, ProfessionalType, ProfessionalDetails } = require('../models');
+const { Op } = require('sequelize');
 
 // Регистрация обычного пользователя
 exports.registerUser = async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
+    // Проверяем существование пользователя, включая мягко удаленных
+    const existingUser = await User.findOne({
+      where: {
+        email,
+        [Op.or]: [
+          { deletedAt: null },
+          { deletedAt: { [Op.gt]: new Date() } }
+        ]
+      }
+    });
+
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create new user
+    // Если пользователь был мягко удален, восстанавливаем его
+    const softDeletedUser = await User.findOne({
+      where: {
+        email,
+        deletedAt: { [Op.ne]: null }
+      },
+      paranoid: false // Включаем поиск мягко удаленных записей
+    });
+
+    if (softDeletedUser) {
+      // Восстанавливаем пользователя
+      await softDeletedUser.restore();
+      // Обновляем пароль и имя
+      await softDeletedUser.update({
+        password,
+        name
+      });
+
+      // Генерируем новый токен
+      const token = jwt.sign(
+        { id: softDeletedUser.id },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      return res.status(200).json({
+        message: 'User account restored successfully',
+        token,
+        user: {
+          id: softDeletedUser.id,
+          email: softDeletedUser.email,
+          name: softDeletedUser.name,
+          role: softDeletedUser.role
+        }
+      });
+    }
+
+    // Создаем нового пользователя
     const user = await User.create({
       email,
       password,
@@ -21,9 +68,13 @@ exports.registerUser = async (req, res) => {
       registrationType: 'regular'
     });
 
-    // Generate JWT token
+    // Генерируем JWT токен
     const token = jwt.sign(
-      { id: user.id },
+      { 
+        id: user.id,
+        role: user.role,
+        email: user.email
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -50,8 +101,9 @@ exports.registerProfessional = async (req, res) => {
     const {
       email,
       password,
-      name,
-      professionalTypeId,
+      firstName,
+      lastName,
+      professionalTypeName,
       experience,
       hourlyRate,
       education,
@@ -60,42 +112,123 @@ exports.registerProfessional = async (req, res) => {
       specializations,
       about,
       location,
-      workingHours,
       contactPhone,
       website,
       socialLinks
     } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
+    // Проверяем существование пользователя, включая мягко удаленных
+    const existingUser = await User.findOne({
+      where: {
+        email,
+        [Op.or]: [
+          { deletedAt: null },
+          { deletedAt: { [Op.gt]: new Date() } }
+        ]
+      }
+    });
+
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Check if professional type exists
-    const professionalType = await ProfessionalType.findByPk(professionalTypeId);
+    // Проверяем существование типа профессионала
+    const professionalType = await ProfessionalType.findOne({ where: { name: professionalTypeName } });
     if (!professionalType) {
       return res.status(400).json({ message: 'Invalid professional type' });
     }
 
-    // Create new user with professional role
+    // Если пользователь был мягко удален, восстанавливаем его
+    const softDeletedUser = await User.findOne({
+      where: {
+        email,
+        deletedAt: { [Op.ne]: null }
+      },
+      paranoid: false
+    });
+
+    if (softDeletedUser) {
+      // Восстанавливаем пользователя
+      await softDeletedUser.restore();
+      // Обновляем данные
+      await softDeletedUser.update({
+        password,
+        firstName,
+        lastName,
+        role: 'professional'
+      });
+
+      // Создаем или обновляем профиль профессионала
+      const [professional] = await Professional.findOrCreate({
+        where: { userId: softDeletedUser.id },
+        defaults: {
+          professionalTypeId: professionalType.id,
+          hourlyRate
+        }
+      });
+
+      // Обновляем детали профессионала
+      const [details] = await ProfessionalDetails.findOrCreate({
+        where: { professionalId: professional.id },
+        defaults: {
+          education,
+          certifications,
+          languages,
+          specializations,
+          about,
+          location,
+          contactPhone,
+          website,
+          socialLinks
+        }
+      });
+
+      // Генерируем новый токен
+      const token = jwt.sign(
+        { 
+          id: softDeletedUser.id,
+          role: softDeletedUser.role,
+          email: softDeletedUser.email
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      return res.status(200).json({
+        message: 'Professional account restored successfully',
+        token,
+        user: {
+          id: softDeletedUser.id,
+          email: softDeletedUser.email,
+          firstName: softDeletedUser.firstName,
+          lastName: softDeletedUser.lastName,
+          role: softDeletedUser.role
+        },
+        professional: {
+          id: professional.id,
+          type: professionalType.name,
+          hourlyRate
+        }
+      });
+    }
+
+    // Создаем нового пользователя
     const user = await User.create({
       email,
       password,
-      name,
-      role: 'professional',
-      registrationType: 'professional'
+      firstName,
+      lastName,
+      role: 'professional'
     });
 
-    // Create professional profile
+    // Создаем профиль профессионала
     const professional = await Professional.create({
       userId: user.id,
-      professionalTypeId,
-      experience,
+      professionalTypeId: professionalType.id,
       hourlyRate
     });
 
-    // Create professional details
+    // Создаем детали профессионала
     await ProfessionalDetails.create({
       professionalId: professional.id,
       education,
@@ -104,15 +237,18 @@ exports.registerProfessional = async (req, res) => {
       specializations,
       about,
       location,
-      workingHours,
       contactPhone,
       website,
       socialLinks
     });
 
-    // Generate JWT token
+    // Генерируем JWT токен
     const token = jwt.sign(
-      { id: user.id },
+      { 
+        id: user.id,
+        role: user.role,
+        email: user.email
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -123,13 +259,13 @@ exports.registerProfessional = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role
       },
       professional: {
         id: professional.id,
         type: professionalType.name,
-        experience,
         hourlyRate
       }
     });
@@ -158,7 +294,11 @@ exports.login = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id },
+      { 
+        id: user.id,
+        role: user.role,
+        email: user.email
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -171,6 +311,7 @@ exports.login = async (req, res) => {
         include: [
           {
             model: ProfessionalType,
+            as: 'professionalType',
             attributes: ['name']
           }
         ]
@@ -178,7 +319,7 @@ exports.login = async (req, res) => {
       if (professional) {
         additionalData = {
           professionalId: professional.id,
-          professionalType: professional.ProfessionalType.name,
+          professionalType: professional.professionalType.name,
           hourlyRate: professional.hourlyRate
         };
       }
@@ -221,10 +362,12 @@ exports.getCurrentUser = async (req, res) => {
         include: [
           {
             model: ProfessionalType,
+            as: 'professionalType',
             attributes: ['id', 'name']
           },
           {
             model: ProfessionalDetails,
+            as: 'details',
             attributes: [
               'education',
               'certifications',
@@ -232,7 +375,6 @@ exports.getCurrentUser = async (req, res) => {
               'specializations',
               'about',
               'location',
-              'workingHours',
               'contactPhone',
               'website',
               'socialLinks'

@@ -1,12 +1,12 @@
 const { User, Professional, ProfessionalType, ProfessionalDetails } = require('../models');
 const { Op } = require('sequelize');
+const { uploadToGoogleDrive, deleteFromGoogleDrive, deleteProfessionalFolder } = require('../services/googleDrive.service');
 
 // Получить список профессионалов с фильтрацией
 exports.getProfessionals = async (req, res) => {
   try {
     const {
       type,
-      minRating,
       maxHourlyRate,
       isAvailable,
       search,
@@ -35,10 +35,6 @@ exports.getProfessionals = async (req, res) => {
       include[1].where = { id: type };
     }
 
-    if (minRating) {
-      where.rating = { [Op.gte]: minRating };
-    }
-
     if (maxHourlyRate) {
       where.hourlyRate = { [Op.lte]: maxHourlyRate };
     }
@@ -63,7 +59,7 @@ exports.getProfessionals = async (req, res) => {
       include,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['rating', 'DESC']]
+      // order: [['rating', 'DESC']],
     });
 
     res.json({
@@ -123,59 +119,131 @@ exports.getProfessionalById = async (req, res) => {
   }
 };
 
+// Получить всех профессионалов
+exports.getAllProfessionals = async (req, res) => {
+  try {
+    const professionals = await Professional.findAll({
+      include: [
+        {
+          model: ProfessionalDetails,
+          as: 'details'
+        },
+        {
+          model: ProfessionalType,
+          as: 'type'
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'firstName', 'lastName', 'phone']
+        }
+      ]
+    });
+
+    res.json(professionals);
+  } catch (error) {
+    console.error('Error getting professionals:', error);
+    res.status(500).json({ message: 'Error getting professionals' });
+  }
+};
+
+// Получить профессионала по ID
+exports.getProfessionalById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const professional = await Professional.findByPk(id, {
+      include: [
+        {
+          model: ProfessionalDetails,
+          as: 'details'
+        },
+        {
+          model: ProfessionalType,
+          as: 'type'
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'firstName', 'lastName', 'phone']
+        }
+      ]
+    });
+
+    if (!professional) {
+      return res.status(404).json({ message: 'Professional not found' });
+    }
+
+    res.json(professional);
+  } catch (error) {
+    console.error('Error getting professional:', error);
+    res.status(500).json({ message: 'Error getting professional' });
+  }
+};
+
 // Создать профиль профессионала
 exports.createProfessionalProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
     const {
-      professionalTypeId,
+      typeId,
       experience,
-      hourlyRate,
       education,
-      certifications,
-      languages,
-      specializations,
-      about,
-      location,
-      workingHours,
-      contactPhone,
-      website,
-      socialLinks
+      specialization,
+      languages
     } = req.body;
 
-    // Проверяем, существует ли уже профиль
-    const existingProfile = await Professional.findOne({ where: { userId } });
-    if (existingProfile) {
-      return res.status(400).json({ message: 'Professional profile already exists' });
+    // Проверяем существование типа профессионала
+    const professionalType = await ProfessionalType.findByPk(typeId);
+    if (!professionalType) {
+      return res.status(400).json({ message: 'Invalid professional type' });
     }
 
-    // Создаем профиль профессионала
+    // Создаем запись профессионала
     const professional = await Professional.create({
-      userId,
-      professionalTypeId,
-      experience,
-      hourlyRate
+      userId: req.user.id,
+      typeId
     });
 
-    // Создаем детали профиля
-    await ProfessionalDetails.create({
+    let profilePhoto = null;
+    if (req.file) {
+      // Получаем данные пользователя для имени папки
+      const user = await User.findByPk(req.user.id);
+      const professionalName = `${user.firstName}_${user.lastName}`.replace(/\s+/g, '_');
+      
+      // Загружаем фото в Google Drive
+      profilePhoto = await uploadToGoogleDrive(req.file, professional.id, professionalName);
+    }
+
+    // Создаем детали профессионала
+    const details = await ProfessionalDetails.create({
       professionalId: professional.id,
+      experience,
       education,
-      certifications,
+      specialization,
       languages,
-      specializations,
-      about,
-      location,
-      workingHours,
-      contactPhone,
-      website,
-      socialLinks
+      profilePhoto
     });
 
-    res.status(201).json({
-      message: 'Professional profile created successfully',
-      professional
+    // Получаем полную информацию о созданном профессионале
+    const createdProfessional = await Professional.findByPk(professional.id, {
+      include: [
+        {
+          model: ProfessionalDetails,
+          as: 'details'
+        },
+        {
+          model: ProfessionalType,
+          as: 'type'
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'firstName', 'lastName', 'phone']
+        }
+      ]
     });
+
+    res.status(201).json(createdProfessional);
   } catch (error) {
     console.error('Error creating professional profile:', error);
     res.status(500).json({ message: 'Error creating professional profile' });
@@ -185,60 +253,87 @@ exports.createProfessionalProfile = async (req, res) => {
 // Обновить профиль профессионала
 exports.updateProfessionalProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { id } = req.params;
     const {
-      professionalTypeId,
+      typeId,
       experience,
-      hourlyRate,
-      isAvailable,
       education,
-      certifications,
-      languages,
-      specializations,
-      about,
-      location,
-      workingHours,
-      contactPhone,
-      website,
-      socialLinks
+      specialization,
+      languages
     } = req.body;
 
-    // Находим профиль профессионала
-    const professional = await Professional.findOne({ where: { userId } });
+    const professional = await Professional.findByPk(id);
     if (!professional) {
-      return res.status(404).json({ message: 'Professional profile not found' });
+      return res.status(404).json({ message: 'Professional not found' });
     }
 
-    // Обновляем основную информацию
-    await professional.update({
-      professionalTypeId,
-      experience,
-      hourlyRate,
-      isAvailable
-    });
+    // Проверяем, что пользователь обновляет свой профиль
+    if (professional.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to update this profile' });
+    }
 
-    // Обновляем детали профиля
+    // Если меняется тип профессионала, проверяем его существование
+    if (typeId && typeId !== professional.typeId) {
+      const professionalType = await ProfessionalType.findByPk(typeId);
+      if (!professionalType) {
+        return res.status(400).json({ message: 'Invalid professional type' });
+      }
+      await professional.update({ typeId });
+    }
+
+    // Обновляем детали
     const details = await ProfessionalDetails.findOne({
-      where: { professionalId: professional.id }
+      where: { professionalId: id }
     });
 
-    await details.update({
-      education,
-      certifications,
-      languages,
-      specializations,
-      about,
-      location,
-      workingHours,
-      contactPhone,
-      website,
-      socialLinks
+    if (details) {
+      let profilePhoto = details.profilePhoto;
+
+      // Если загружено новое фото
+      if (req.file) {
+        // Если было старое фото, удаляем его из Google Drive
+        if (profilePhoto) {
+          const oldFileId = profilePhoto.split('/').pop();
+          await deleteFromGoogleDrive(oldFileId);
+        }
+
+        // Получаем данные пользователя для имени папки
+        const user = await User.findByPk(professional.userId);
+        const professionalName = `${user.firstName}_${user.lastName}`.replace(/\s+/g, '_');
+        
+        // Загружаем новое фото
+        profilePhoto = await uploadToGoogleDrive(req.file, professional.id, professionalName);
+      }
+
+      await details.update({
+        experience,
+        education,
+        specialization,
+        languages,
+        profilePhoto
+      });
+    }
+
+    // Получаем обновленную информацию
+    const updatedProfessional = await Professional.findByPk(id, {
+      include: [
+        {
+          model: ProfessionalDetails,
+          as: 'details'
+        },
+        {
+          model: ProfessionalType,
+          as: 'type'
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'firstName', 'lastName', 'phone']
+        }
+      ]
     });
 
-    res.json({
-      message: 'Professional profile updated successfully',
-      professional
-    });
+    res.json(updatedProfessional);
   } catch (error) {
     console.error('Error updating professional profile:', error);
     res.status(500).json({ message: 'Error updating professional profile' });
@@ -248,18 +343,181 @@ exports.updateProfessionalProfile = async (req, res) => {
 // Удалить профиль профессионала
 exports.deleteProfessionalProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { id } = req.params;
 
-    const professional = await Professional.findOne({ where: { userId } });
+    const professional = await Professional.findByPk(id);
     if (!professional) {
-      return res.status(404).json({ message: 'Professional profile not found' });
+      return res.status(404).json({ message: 'Professional not found' });
     }
 
+    // Проверяем, что пользователь удаляет свой профиль
+    if (professional.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this profile' });
+    }
+
+    // Удаляем папку профессионала и все файлы в ней
+    await deleteProfessionalFolder(id);
+
+    // Удаляем детали профессионала
+    await ProfessionalDetails.destroy({
+      where: { professionalId: id }
+    });
+
+    // Удаляем запись профессионала
     await professional.destroy();
 
     res.json({ message: 'Professional profile deleted successfully' });
   } catch (error) {
     console.error('Error deleting professional profile:', error);
     res.status(500).json({ message: 'Error deleting professional profile' });
+  }
+};
+
+// Обновить профиль профессионала
+exports.updateProfessional = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      experience,
+      hourlyRate,
+      isAvailable,
+      education,
+      certifications,
+      languages,
+      specializations,
+      about,
+      location,
+      contactPhone,
+      socialLinks
+    } = req.body;
+
+    // Проверяем, существует ли профессионал
+    const professional = await Professional.findByPk(id);
+    if (!professional) {
+      return res.status(404).json({ message: 'Professional not found' });
+    }
+
+    // Проверяем, что пользователь обновляет свой собственный профиль
+    if (professional.userId !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to update this profile' });
+    }
+
+    // Обновляем основную информацию профессионала
+    await professional.update({
+      experience,
+      hourlyRate,
+      isAvailable
+    });
+
+    // Обновляем детали профессионала
+    const [professionalDetails] = await ProfessionalDetails.findOrCreate({
+      where: { professionalId: id }
+    });
+
+    await professionalDetails.update({
+      education,
+      certifications,
+      languages,
+      specializations,
+      about,
+      location,
+      contactPhone,
+      socialLinks
+    });
+
+    // Получаем обновленные данные
+    const updatedProfessional = await Professional.findOne({
+      where: { id },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: ProfessionalType,
+          attributes: ['id', 'name', 'description', 'icon']
+        },
+        {
+          model: ProfessionalDetails
+        }
+      ]
+    });
+
+    res.json(updatedProfessional);
+  } catch (error) {
+    console.error('Error updating professional:', error);
+    res.status(500).json({ message: 'Error updating professional' });
+  }
+};
+
+// Удалить профиль профессионала
+exports.deleteProfessional = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Проверяем, существует ли профессионал
+    const professional = await Professional.findByPk(id);
+    if (!professional) {
+      return res.status(404).json({ message: 'Professional not found' });
+    }
+
+    // Проверяем, что пользователь удаляет свой собственный профиль
+    if (professional.userId !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to delete this profile' });
+    }
+
+    // Удаляем профиль профессионала
+    await professional.destroy();
+
+    res.json({ message: 'Professional profile deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting professional:', error);
+    res.status(500).json({ message: 'Error deleting professional' });
+  }
+};
+
+// Загрузка фото профиля
+exports.uploadProfilePhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const professional = await Professional.findByPk(id, {
+      include: [{
+        model: ProfessionalDetails,
+        as: 'details'
+      }, {
+        model: User,
+        as: 'user',
+        attributes: ['firstName', 'lastName']
+      }]
+    });
+
+    if (!professional) {
+      return res.status(404).json({ message: 'Professional not found' });
+    }
+
+    // Загружаем фото в Google Drive
+    const professionalName = `${professional.user.firstName}_${professional.user.lastName}`.replace(/\s+/g, '_');
+    const photoUrl = await uploadToGoogleDrive(file, professional.id, professionalName);
+
+    // Обновляем URL фото в базе данных
+    if (professional.details) {
+      await professional.details.update({ profilePhoto: photoUrl });
+    } else {
+      await ProfessionalDetails.create({
+        professionalId: professional.id,
+        profilePhoto: photoUrl
+      });
+    }
+
+    res.json({ message: 'Profile photo uploaded successfully', photoUrl });
+  } catch (error) {
+    console.error('Error uploading profile photo:', error);
+    res.status(500).json({ message: 'Error uploading profile photo', error: error.message });
   }
 }; 
