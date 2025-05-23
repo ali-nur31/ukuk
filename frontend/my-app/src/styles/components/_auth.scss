@@ -1,0 +1,131 @@
+.auth-form {
+  max-width: 440px;
+  margin: 4rem auto;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 80px;
+    height: 80px;
+    background: rgba(52, 152, 219, 0.08);
+    border-radius: 50%;
+  }
+
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 1.5rem;
+    border: 2px solid #e0e6ed;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:focus {
+      border-color: #3498db;
+      box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.15);
+      outline: none;
+    }
+
+    &::placeholder {
+      color: #a0aec0;
+    }
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(52, 152, 219, 0.25);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .auth-links {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: #4a5568;
+
+    a {
+      color: #3498db;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s;
+
+      &:hover {
+        color: #2c3e50;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .error-message {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    text-align: center;
+    font-size: 0.9rem;
+    border: 1px solid #fca5a5;
+  }
+
+  .success-message {
+    background: #dcfce7;
+    color: #16a34a;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    text-align: center;
+    font-size: 0.9rem;
+    border: 1px solid #86efac;
+  }
+
+  @media (max-width: 480px) {
+    margin: 2rem 1rem;
+    padding: 1.5rem;
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    input {
+      padding: 12px;
+    }
+
+    button {
+      padding: 12px;
+    }
+  }
+}
