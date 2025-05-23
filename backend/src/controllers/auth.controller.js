@@ -1,26 +1,10 @@
 const jwt = require('jsonwebtoken');
 const { User, Professional, ProfessionalType, ProfessionalDetails } = require('../models');
-const { validateEmail, validatePassword } = require('../utils/validators');
 
 // Регистрация обычного пользователя
 exports.registerUser = async (req, res) => {
   try {
     const { email, password, name } = req.body;
-
-    // Validate input
-    if (!email || !password || !name) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    if (!validateEmail(email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
-
-    if (!validatePassword(password)) {
-      return res.status(400).json({ 
-        message: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number' 
-      });
-    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -81,21 +65,6 @@ exports.registerProfessional = async (req, res) => {
       website,
       socialLinks
     } = req.body;
-
-    // Validate input
-    if (!email || !password || !name || !professionalTypeId || !experience || !hourlyRate || !education || !location) {
-      return res.status(400).json({ message: 'All required fields must be provided' });
-    }
-
-    if (!validateEmail(email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
-
-    if (!validatePassword(password)) {
-      return res.status(400).json({ 
-        message: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number' 
-      });
-    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -175,11 +144,6 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
     // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
@@ -241,51 +205,50 @@ exports.login = async (req, res) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'email', 'name', 'role']
+      attributes: { exclude: ['password'] }
     });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Get additional data based on user role
-    let additionalData = {};
+    let response = { user };
+
+    // If user is a professional, include professional profile
     if (user.role === 'professional') {
       const professional = await Professional.findOne({
         where: { userId: user.id },
         include: [
           {
             model: ProfessionalType,
-            attributes: ['name']
+            attributes: ['id', 'name']
           },
           {
             model: ProfessionalDetails,
-            attributes: ['location', 'languages', 'specializations']
+            attributes: [
+              'education',
+              'certifications',
+              'languages',
+              'specializations',
+              'about',
+              'location',
+              'workingHours',
+              'contactPhone',
+              'website',
+              'socialLinks'
+            ]
           }
         ]
       });
+
       if (professional) {
-        additionalData = {
-          professional: {
-            id: professional.id,
-            type: professional.ProfessionalType.name,
-            hourlyRate: professional.hourlyRate,
-            rating: professional.rating,
-            isAvailable: professional.isAvailable,
-            details: professional.ProfessionalDetails
-          }
-        };
+        response.professional = professional;
       }
     }
 
-    res.json({
-      user: {
-        ...user.toJSON(),
-        ...additionalData
-      }
-    });
+    res.json(response);
   } catch (error) {
     console.error('Get current user error:', error);
-    res.status(500).json({ message: 'Error getting user data' });
+    res.status(500).json({ message: 'Error getting current user' });
   }
 }; 

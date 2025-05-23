@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
-const validator = require('validator');
 const sequelize = require('../config/database');
 
 const User = sequelize.define('User', {
@@ -12,17 +11,11 @@ const User = sequelize.define('User', {
   email: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
-    validate: {
-      isEmail: true
-    }
+    unique: true
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      len: [8, 100]
-    }
+    allowNull: false
   },
   name: {
     type: DataTypes.STRING,
@@ -35,8 +28,8 @@ const User = sequelize.define('User', {
   },
   registrationType: {
     type: DataTypes.ENUM('regular', 'professional'),
-    allowNull: false,
-    defaultValue: 'regular'
+    defaultValue: 'regular',
+    allowNull: false
   }
 }, {
   timestamps: true,
