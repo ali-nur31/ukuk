@@ -49,7 +49,7 @@ const Home = () => {
             }
 
             if (!isAuthenticated && freeQueriesLeft <= 0) {
-                setError('У вас закончились бесплатные запросы. Пожалуйста, зарегистрируйтесь или войдите в систему.');
+                setError('Акысыз суроолор бүттү. Сураныч, катталыңыз же системага кириңиз.');
                 setIsLoading(false);
                 return;
             }
@@ -63,7 +63,7 @@ const Home = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Ошибка при отправке запроса');
+                throw new Error('Суроо жөнөтүүдө ката кетти');
             }
 
             const data = await response.json();
@@ -75,7 +75,7 @@ const Home = () => {
 
             setInput('');
         } catch (err) {
-            setError('Произошла ошибка при отправке запроса');
+            setError('Суроо жөнөтүүдө ката кетти');
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -119,7 +119,7 @@ const Home = () => {
                             textAlign: 'center',
                             letterSpacing: 1
                         }}>
-                            Чем я могу помочь?
+                            Мен сизге кандай жардам бере алам?
                         </h1>
                         {!isAuthenticated && (
                             <div style={{
@@ -127,7 +127,7 @@ const Home = () => {
                                 color: '#666',
                                 textAlign: 'center'
                             }}>
-                                Осталось бесплатных запросов: {freeQueriesLeft}
+                                Акысыз суроолор калды: {freeQueriesLeft}
                             </div>
                         )}
                     </>
@@ -193,7 +193,7 @@ const Home = () => {
                                 minHeight: 32,
                                 whiteSpace: 'pre-wrap',
                             }}>
-                                {msg.answer || (idx === messages.length - 1 && isLoading ? 'Генерируется ответ...' : '')}
+                                {msg.answer || (idx === messages.length - 1 && isLoading ? 'Жооп даярдалууда...' : '')}
                             </div>
                         </div>
                     ))}
@@ -221,7 +221,7 @@ const Home = () => {
                         type="text"
                         value={input}
                         onChange={e => setInput(e.target.value)}
-                        placeholder="Спросите что-нибудь..."
+                        placeholder="Бир нерсе сураңыз..."
                         style={{
                             width: '100%',
                             maxWidth: 480,
@@ -253,7 +253,7 @@ const Home = () => {
                             opacity: isLoading ? 0.7 : 1
                         }}
                     >
-                        {isLoading ? 'Отправка...' : 'Отправить'}
+                        {isLoading ? 'Жөнөтүлүүдө...' : 'Жөнөтүү'}
                     </button>
                 </form>
             </div>

@@ -26,10 +26,10 @@ const Login = () => {
         setLoading(true);
         try {
             await login(formData);
-            toast.success('Successfully logged in!');
+            toast.success('Ийгиликтүү кирдиңиз!');
             navigate('/');
         } catch (error) {
-            toast.error(error.message || 'Failed to login');
+            toast.error(error.message || 'Кирүүдө ката кетти');
         } finally {
             setLoading(false);
         }
@@ -38,7 +38,7 @@ const Login = () => {
     return (
         <div className="auth-page-center">
             <div className="auth-form">
-                <h1>Вход в аккаунт</h1>
+                <h1>Кабинетке кирүү</h1>
                 <form onSubmit={handleSubmit}>
                     <input
                         type="email"
@@ -51,17 +51,17 @@ const Login = () => {
                     <input
                         type="password"
                         name="password"
-                        placeholder="Пароль"
+                        placeholder="Сыр сөз"
                         value={formData.password}
                         onChange={handleChange}
                         required
                     />
                     <button type="submit" disabled={loading}>
-                        {loading ? 'Вход...' : 'Войти'}
+                        {loading ? 'Кирүүдө...' : 'Кирүү'}
                     </button>
                 </form>
                 <div className="auth-links">
-                    Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+                    Аккаунт жокбу? <Link to="/register">Катталуу</Link>
                 </div>
             </div>
         </div>

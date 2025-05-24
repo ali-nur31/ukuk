@@ -113,7 +113,7 @@ const Specialists = () => {
         return (
             <div className="specialists-page loading">
                 <div className="spinner"></div>
-                <p>Loading professionals...</p>
+                <p>Адистер жүктөлүүдө...</p>
             </div>
         );
     }
@@ -122,7 +122,7 @@ const Specialists = () => {
         return (
             <div className="specialists-page error">
                 <p>{error}</p>
-                <button onClick={fetchInitialData}>Try Again</button>
+                <button onClick={fetchInitialData}>Кайра аракет кылуу</button>
             </div>
         );
     }
@@ -131,13 +131,13 @@ const Specialists = () => {
 
     return (
         <div className="specialists-page">
-            <h1>Наши специалисты</h1>
+            <h1>Биздин адистер</h1>
             
             <div className="search-filters">
                 <div className="search-bar">
                     <input
                         type="text"
-                        placeholder="Поиск специалистов..."
+                        placeholder="Адистерди издөө..."
                         value={searchParams.search}
                         onChange={handleSearch}
                         className="search-input"
@@ -151,7 +151,7 @@ const Specialists = () => {
                         onChange={handleFilterChange}
                         className="filter-select"
                     >
-                        <option value="">Все типы специалистов</option>
+                        <option value="">Бардык адистер</option>
                         {professionalTypes.map(type => (
                             <option key={type.id} value={type.name}>
                                 {type.name}
@@ -162,7 +162,7 @@ const Specialists = () => {
                     <input
                         type="text"
                         name="specialization"
-                        placeholder="Специализация"
+                        placeholder="Адистик"
                         value={filters.specialization}
                         onChange={handleFilterChange}
                         className="filter-input"
@@ -171,7 +171,7 @@ const Specialists = () => {
                     <input
                         type="text"
                         name="language"
-                        placeholder="Язык"
+                        placeholder="Тил"
                         value={filters.language}
                         onChange={handleFilterChange}
                         className="filter-input"
@@ -180,7 +180,7 @@ const Specialists = () => {
                     <input
                         type="number"
                         name="maxHourlyRate"
-                        placeholder="Макс. почасовая ставка"
+                        placeholder="Макс. сааттык акы"
                         value={filters.maxHourlyRate}
                         onChange={handleFilterChange}
                         className="filter-input"
@@ -193,7 +193,7 @@ const Specialists = () => {
                             checked={filters.isAvailable}
                             onChange={handleFilterChange}
                         />
-                        Только доступные
+                        Бош адистер гана
                     </label>
                 </div>
             </div>
@@ -208,7 +208,7 @@ const Specialists = () => {
                         <div className="professional-header">
                             <div className="professional-avatar">
                                 {professional.details.profilePhoto ? (
-                                    <img src={professional.details.profilePhoto} alt="Фото" />
+                                    <img src={professional.details.profilePhoto} alt="Сүрөт" />
                                 ) : (
                                     <div className="avatar-placeholder">
                                         {professional.user.firstName[0]}{professional.user.lastName[0]}
@@ -221,27 +221,27 @@ const Specialists = () => {
                             </div>
                             <div className="professional-status">
                                 {professional.isAvailable ? (
-                                    <span className="status available">Доступен</span>
+                                    <span className="status available">Бош</span>
                                 ) : (
-                                    <span className="status busy">Занят</span>
+                                    <span className="status busy">Мыш</span>
                                 )}
                             </div>
                         </div>
                         
                         <div className="professional-info">
                             <div className="info-section">
-                                <h3>О специалисте</h3>
+                                <h3>Адис жөнүндө</h3>
                                 <p>{professional.details.about}</p>
                             </div>
 
                             <div className="info-section">
-                                <h3>Опыт и ставка</h3>
-                                <p>Опыт: {'Не указано'}</p>
-                                <p>Ставка: ${professional.hourlyRate}/час</p>
+                                <h3>Тажрыйба жана акы</h3>
+                                <p>Тажрыйба: {'Көрсөтүлгөн эмес'}</p>
+                                <p>Акы: {professional.hourlyRate} сом/саат</p>
                             </div>
 
                             <div className="info-section">
-                                <h3>Специализации</h3>
+                                <h3>Адистиктер</h3>
                                 <div className="tags">
                                     {parsePgArray(professional.details.specializations).map((spec, i) => (
                                         <span key={i} className="tag">{spec}</span>
@@ -250,7 +250,7 @@ const Specialists = () => {
                             </div>
 
                             <div className="info-section">
-                                <h3>Языки</h3>
+                                <h3>Тилдер</h3>
                                 <div className="tags">
                                     {parsePgArray(professional.details.languages).map((lang, i) => (
                                         <span key={i} className="tag">{lang}</span>
@@ -276,7 +276,7 @@ const Specialists = () => {
 
             {professionals.length === 0 && (
                 <div className="no-results">
-                    <p>Специалисты не найдены по вашим критериям поиска.</p>
+                    <p>Сиздин издөө шарттарыңызга ылайык адистер табылган жок.</p>
                 </div>
             )}
 

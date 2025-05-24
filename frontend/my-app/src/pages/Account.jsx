@@ -42,7 +42,7 @@ const Account = () => {
       try {
         const data = await getCurrentUser();
         if (!data || !data.user) {
-          setError('Пользователь не найден');
+          setError('Колдонуучу табылган жок');
           setLoading(false);
           return;
         }
@@ -55,7 +55,7 @@ const Account = () => {
         });
         setLoading(false);
       } catch (err) {
-        setError('Ошибка получения пользователя');
+        setError('Колдонуучуну алууда ката кетти');
         setLoading(false);
       }
     };
@@ -68,26 +68,11 @@ const Account = () => {
 
   const handleCancelClick = () => {
     setIsEditing(false);
-    // Reset editForm to current profile/professional data
-    const initialForm = { 
-      firstName: profile.firstName || '', 
-      lastName: profile.lastName || '', 
-      email: profile.email || '',
-      // Add other shared user fields here if needed
-    };
-    if (profile && profile.role === 'professional' && professionalData) {
-       initialForm.hourlyRate = professionalData.hourlyRate || '';
-       initialForm.education = professionalData.details?.education || '';
-       initialForm.certifications = professionalData.details?.certifications || '';
-       initialForm.languages = Array.isArray(professionalData.details?.languages) ? professionalData.details.languages.join(', ') : professionalData.details?.languages || '';
-       initialForm.specializations = Array.isArray(professionalData.details?.specializations) ? professionalData.details.specializations.join(', ') : professionalData.details?.specializations || '';
-       initialForm.about = professionalData.details?.about || '';
-       initialForm.location = professionalData.details?.location || '';
-       initialForm.contactPhone = professionalData.details?.contactPhone || '';
-       initialForm.website = professionalData.details?.website || '';
-       initialForm.linkedin = professionalData.details?.socialLinks?.linkedin || '';
-    }
-    setEditForm(initialForm);
+    setEditForm({
+      firstName: profile.firstName || '',
+      lastName: profile.lastName || '',
+      email: profile.email || ''
+    });
   };
 
   const handleFormChange = (e) => {
@@ -108,30 +93,29 @@ const Account = () => {
     setLoading(true);
     setError(null);
     try {
-      // Prepare data based on user role
+      // Подготовка данных для обновления
       const dataToUpdate = { ...editForm };
 
       if (profile && profile.role === 'professional') {
-        // Separate user and professional details for backend update
+        // Отдельные данные для пользователя и профессионала
         const userUpdate = { 
-            firstName: dataToUpdate.firstName,
-            lastName: dataToUpdate.lastName,
-            // email is disabled, so no need to send
-            // Add other shared user fields if editable
+          firstName: dataToUpdate.firstName,
+          lastName: dataToUpdate.lastName,
+          email: dataToUpdate.email
         };
         const professionalUpdate = {
-             hourlyRate: dataToUpdate.hourlyRate,
-             details: {
-                 education: dataToUpdate.education,
-                 certifications: dataToUpdate.certifications,
-                 languages: dataToUpdate.languages ? dataToUpdate.languages.split(', ').map(lang => lang.trim()) : undefined, // Convert comma-separated string back to array, handle empty
-                 specializations: dataToUpdate.specializations ? dataToUpdate.specializations.split(', ').map(spec => spec.trim()) : undefined, // Convert comma-separated string back to array, handle empty
-                 about: dataToUpdate.about,
-                 location: dataToUpdate.location,
-                 contactPhone: dataToUpdate.contactPhone,
-                 website: dataToUpdate.website,
-                 socialLinks: { linkedin: dataToUpdate.linkedin }, // Assuming linkedin is the only social link for now
-             }
+          hourlyRate: dataToUpdate.hourlyRate,
+          details: {
+            education: dataToUpdate.education,
+            certifications: dataToUpdate.certifications,
+            languages: dataToUpdate.languages ? dataToUpdate.languages.split(', ').map(lang => lang.trim()) : undefined,
+            specializations: dataToUpdate.specializations ? dataToUpdate.specializations.split(', ').map(spec => spec.trim()) : undefined,
+            about: dataToUpdate.about,
+            location: dataToUpdate.location,
+            contactPhone: dataToUpdate.contactPhone,
+            website: dataToUpdate.website,
+            socialLinks: { linkedin: dataToUpdate.linkedin }
+          }
         };
         
         // Сначала обновляем профиль, потом фото (если выбрано)
@@ -142,22 +126,12 @@ const Account = () => {
           setPhotoUrl(uploadRes.photoUrl);
           toast.success('Фото профиля обновлено!');
         }
-         // Update state with combined data from the response
-        if(updatedUserData && updatedUserData.user) {
-            setProfile(updatedUserData.user);
-            if(updatedUserData.professional) setProfessionalData(updatedUserData.professional);
-        } else {
-             // Handle unexpected response structure
-             throw new Error('Failed to update profile: Invalid response structure.');
-        }
-
-      } else if (profile) { // Handle regular user update
+        setProfile(updatedUserData.user);
+        if (updatedUserData.professional) setProfessionalData(updatedUserData.professional);
+      } else {
+        // Обновление обычного пользователя
         const updatedUserData = await updateUserProfile(profile._id, dataToUpdate);
-         if(updatedUserData) {
-             setProfile(updatedUserData);
-         } else {
-              throw new Error('Failed to update profile: Invalid response structure.');
-         }
+        setProfile(updatedUserData);
       }
       
       setIsEditing(false);
@@ -173,9 +147,9 @@ const Account = () => {
 
   // Logout button handled in Sidebar
 
-  if (loading) return <div>Загрузка...</div>;
-  if (error) return <div>Ошибка: {error}</div>;
-  if (!profile) return <div>Профиль не найден или данные загружаются...</div>;
+  if (loading) return <div>Жүктөлүүдө...</div>;
+  if (error) return <div>Ката: {error}</div>;
+  if (!profile) return <div>Профиль табылган жок же маалыматтар жүктөлүүдө...</div>;
 
   const isProfessional = profile.role === 'professional';
 
@@ -183,58 +157,175 @@ const Account = () => {
     <div className="account-container">
       <div className="profile-card">
         <div className="profile-header">
-          <h2>Личный кабинет</h2>
-          {/* Только для профессионала показываем кнопку редактирования */}
-          {isProfessional && !isEditing && profile && (
-            <button className="edit-button" onClick={handleEditClick}><FaEdit /> Редактировать</button>
-          )}
-          {isProfessional && isEditing && (
+          <h2>Жеке кабинет</h2>
+          {!isEditing ? (
+            <button className="edit-button" onClick={handleEditClick}><FaEdit /> Оңдоо</button>
+          ) : (
             <div className="edit-buttons">
-              <button className="save-button" onClick={handleSave}><FaSave /> Сохранить</button>
-              <button className="cancel-button" onClick={handleCancelClick}><FaTimes /> Отмена</button>
+              <button className="save-button" onClick={handleSave}><FaSave /> Сактоо</button>
+              <button className="cancel-button" onClick={handleCancelClick}><FaTimes /> Жокко чыгаруу</button>
             </div>
           )}
         </div>
         
-        {!isProfessional && (
+        {!isEditing ? (
           <div className="user-info">
-            <p><FaUser /> <strong>Имя:</strong> {profile.firstName} {profile.lastName}</p>
+            <div className="profile-photo">
+              {photoUrl ? (
+                <img src={photoUrl} alt="Профиль сүрөтү" />
+              ) : (
+                <div className="avatar-placeholder">
+                  {profile.firstName?.[0]}{profile.lastName?.[0]}
+                </div>
+              )}
+            </div>
+            <p><FaUser /> <strong>Аты:</strong> {profile.firstName} {profile.lastName}</p>
             <p><FaEnvelope /> <strong>Email:</strong> {profile.email}</p>
-          </div>
-        )}
-        {isProfessional && !isEditing && profile && (
-          <div className="user-info">
-            <p><FaUser /> <strong>Имя:</strong> {profile.firstName} {profile.lastName}</p>
-            <p><FaEnvelope /> <strong>Email:</strong> {profile.email}</p>
-            {photoUrl && (
-              <div style={{margin: '10px 0'}}>
-                <img src={photoUrl} alt="Фото профиля" style={{maxWidth: 120, borderRadius: 8}} />
-              </div>
+            {isProfessional && professionalData && (
+              <>
+                <p><FaSuitcase /> <strong>Түрү:</strong> {professionalData.professionalType?.name || 'Көрсөтүлгөн эмес'}</p>
+                <p><strong>Сааттык акы:</strong> {professionalData.hourlyRate}</p>
+                <p><strong>Жумушка бош:</strong> {professionalData.isAvailable ? 'Ооба' : 'Жок'}</p>
+                <p><FaGraduationCap /> <strong>Билими:</strong> {professionalData.details?.education || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaCertificate /> <strong>Сертификаттар:</strong> {professionalData.details?.certifications || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaLanguage /> <strong>Тилдер:</strong> {parsePgArray(professionalData.details?.languages).join(', ') || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaInfoCircle /> <strong>Өзү жөнүндө:</strong> {professionalData.details?.about || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaMapMarkerAlt /> <strong>Жайгашкан жери:</strong> {professionalData.details?.location || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaPhone /> <strong>Байланыш телефону:</strong> {professionalData.details?.contactPhone || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaGlobe /> <strong>Вебсайт:</strong> {professionalData.details?.website || 'Көрсөтүлгөн эмес'}</p>
+                <p><FaLinkedin /> <strong>LinkedIn:</strong> {professionalData.details?.socialLinks?.linkedin || 'Көрсөтүлгөн эмес'}</p>
+              </>
             )}
           </div>
-        )}
-        {/* Блок с полной инфой для профессионала */}
-        {isProfessional && professionalData && (
-          <div className="professional-info-full">
-            <h3>Профессиональный профиль</h3>
-            <p><strong>ID профиля:</strong> {professionalData.id}</p>
-            <p><strong>Тип:</strong> {professionalData.professionalType?.name || 'Не указано'}</p>
-            <p><strong>Почасовая ставка:</strong> {professionalData.hourlyRate}</p>
-            <p><strong>Доступен для работы:</strong> {professionalData.isAvailable ? 'Да' : 'Нет'}</p>
-            <p><strong>Статус верификации:</strong> {professionalData.isVerified ? 'Верифицирован' : 'Не верифицирован'}</p>
-            <p><strong>Статус проверки:</strong> {professionalData.verificationStatus}</p>
-            <p><strong>Дата создания профиля:</strong> {professionalData.createdAt}</p>
-            <p><strong>Дата обновления профиля:</strong> {professionalData.updatedAt}</p>
-            <h4>Детали</h4>
-            <p><strong>Образование:</strong> {professionalData.details?.education || 'Не указано'}</p>
-            <p><strong>Сертификаты:</strong> {professionalData.details?.certifications || 'Не указано'}</p>
-            <p><strong>Языки:</strong> {parsePgArray(professionalData.details?.languages).join(', ') || 'Не указано'}</p>
-            <p><strong>Специализации:</strong> {parsePgArray(professionalData.details?.specializations).join(', ') || 'Не указано'}</p>
-            <p><strong>О себе:</strong> {professionalData.details?.about || 'Не указано'}</p>
-            <p><strong>Местоположение:</strong> {professionalData.details?.location || 'Не указано'}</p>
-            <p><strong>Контактный телефон:</strong> {professionalData.details?.contactPhone || 'Не указано'}</p>
-            <p><strong>Вебсайт:</strong> {professionalData.details?.website || 'Не указано'}</p>
-            <p><strong>LinkedIn:</strong> {professionalData.details?.socialLinks?.linkedin || 'Не указано'}</p>
+        ) : (
+          <div className="edit-form">
+            <div className="form-group">
+              <label>Аты:</label>
+              <input
+                type="text"
+                name="firstName"
+                value={editForm.firstName}
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>Фамилиясы:</label>
+              <input
+                type="text"
+                name="lastName"
+                value={editForm.lastName}
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>Email:</label>
+              <input
+                type="email"
+                name="email"
+                value={editForm.email}
+                onChange={handleFormChange}
+                disabled
+              />
+            </div>
+            {isProfessional && (
+              <>
+                <div className="form-group">
+                  <label>Сааттык акы:</label>
+                  <input
+                    type="number"
+                    name="hourlyRate"
+                    value={editForm.hourlyRate}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Билими:</label>
+                  <textarea
+                    name="education"
+                    value={editForm.education}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Сертификаттар:</label>
+                  <textarea
+                    name="certifications"
+                    value={editForm.certifications}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Тилдер (чекит менен бөлүңүз):</label>
+                  <input
+                    type="text"
+                    name="languages"
+                    value={editForm.languages}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Адистиктер (чекит менен бөлүңүз):</label>
+                  <input
+                    type="text"
+                    name="specializations"
+                    value={editForm.specializations}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Өзү жөнүндө:</label>
+                  <textarea
+                    name="about"
+                    value={editForm.about}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Жайгашкан жери:</label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={editForm.location}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Байланыш телефону:</label>
+                  <input
+                    type="tel"
+                    name="contactPhone"
+                    value={editForm.contactPhone}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Вебсайт:</label>
+                  <input
+                    type="url"
+                    name="website"
+                    value={editForm.website}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>LinkedIn:</label>
+                  <input
+                    type="url"
+                    name="linkedin"
+                    value={editForm.linkedin}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Профиль сүрөтү:</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -45,7 +45,7 @@ const Register = () => {
                 setProfessionalTypes(types);
             } catch (error) {
                 console.error('Error fetching professional types:', error);
-                setErrorMessage('Failed to load professional types. Please try again later.');
+                setErrorMessage('Адистик түрлөрүн жүктөөдө ката кетти. Сураныч, кийин кайра аракет кылыңыз.');
             }
         };
 
@@ -129,20 +129,17 @@ const Register = () => {
                 });
             }
 
-            // Save token and user data
             if (response.token) {
                 localStorage.setItem('accessToken', response.token);
-                // Store user data if needed
                 if (response.user) {
                     localStorage.setItem('user', JSON.stringify(response.user));
                 }
-                // Redirect to home page
                 navigate('/');
             } else {
-                setErrorMessage('Registration successful but no token received');
+                setErrorMessage('Каттоо ийгиликтүү болду, бирок токен алынбады');
             }
         } catch (error) {
-            setErrorMessage(error.message || 'Registration failed. Please try again.');
+            setErrorMessage(error.message || 'Каттоо ийгиликсиз болду. Сураныч, кайра аракет кылыңыз.');
         }
     };
 
@@ -158,10 +155,10 @@ const Register = () => {
                     >
                         <div className="step-number">{i + 1}</div>
                         <div className="step-label">
-                            {i === 0 && 'Основная информация'}
-                            {i === 1 && 'Профессиональная информация'}
-                            {i === 2 && 'Образование и квалификация'}
-                            {i === 3 && 'Дополнительная информация'}
+                            {i === 0 && 'Негизги маалыматтар'}
+                            {i === 1 && 'Адистик маалыматтары'}
+                            {i === 2 && 'Билим жана квалификация'}
+                            {i === 3 && 'Кошумча маалыматтар'}
                         </div>
                     </div>
                 ))}
@@ -184,7 +181,7 @@ const Register = () => {
                     <input
                         type="password"
                         name="password"
-                        placeholder="Пароль"
+                        placeholder="Сыр сөз"
                         value={formData.password}
                         onChange={handleInputChange}
                         required
@@ -192,7 +189,7 @@ const Register = () => {
                     <input
                         type="text"
                         name="firstName"
-                        placeholder="Имя"
+                        placeholder="Аты"
                         value={formData.firstName}
                         onChange={handleInputChange}
                         required
@@ -200,7 +197,7 @@ const Register = () => {
                     <input
                         type="text"
                         name="lastName"
-                        placeholder="Фамилия"
+                        placeholder="Фамилиясы"
                         value={formData.lastName}
                         onChange={handleInputChange}
                         required
@@ -213,7 +210,7 @@ const Register = () => {
             case 1:
                 return (
                     <>
-                        <h3>Основная информация</h3>
+                        <h3>Негизги маалыматтар</h3>
                         <input
                             type="email"
                             name="email"
@@ -225,7 +222,7 @@ const Register = () => {
                         <input
                             type="password"
                             name="password"
-                            placeholder="Пароль"
+                            placeholder="Сыр сөз"
                             value={formData.password}
                             onChange={handleInputChange}
                             required
@@ -233,7 +230,7 @@ const Register = () => {
                         <input
                             type="text"
                             name="firstName"
-                            placeholder="Имя"
+                            placeholder="Аты"
                             value={formData.firstName}
                             onChange={handleInputChange}
                             required
@@ -241,7 +238,7 @@ const Register = () => {
                         <input
                             type="text"
                             name="lastName"
-                            placeholder="Фамилия"
+                            placeholder="Фамилиясы"
                             value={formData.lastName}
                             onChange={handleInputChange}
                             required
@@ -251,7 +248,7 @@ const Register = () => {
             case 2:
                 return (
                     <>
-                        <h3>Профессиональная информация</h3>
+                        <h3>Адистик маалыматтары</h3>
                         <select
                             name="professionalTypeName"
                             value={formData.professionalTypeName}
@@ -259,7 +256,7 @@ const Register = () => {
                             required
                             className="select-input"
                         >
-                            <option value="">Выберите тип профессии</option>
+                            <option value="">Адистик түрүн тандаңыз</option>
                             {professionalTypes.map(type => (
                                 <option key={type.id} value={type.name}>
                                     {type.name}
@@ -269,7 +266,7 @@ const Register = () => {
                         <input
                             type="number"
                             name="experience"
-                            placeholder="Опыт работы (лет)"
+                            placeholder="Тажрыйба (жыл)"
                             value={formData.experience}
                             onChange={handleInputChange}
                             required
@@ -277,7 +274,7 @@ const Register = () => {
                         <input
                             type="number"
                             name="hourlyRate"
-                            placeholder="Почасовая ставка"
+                            placeholder="Сааттык акы"
                             value={formData.hourlyRate}
                             onChange={handleInputChange}
                             required
@@ -287,11 +284,11 @@ const Register = () => {
             case 3:
                 return (
                     <>
-                        <h3>Образование и квалификация</h3>
+                        <h3>Билим жана квалификация</h3>
                         <input
                             type="text"
                             name="education"
-                            placeholder="Образование"
+                            placeholder="Билими"
                             value={formData.education}
                             onChange={handleInputChange}
                             required
@@ -299,20 +296,20 @@ const Register = () => {
                         <input
                             type="text"
                             name="certifications"
-                            placeholder="Сертификаты"
+                            placeholder="Сертификаттар"
                             value={formData.certifications}
                             onChange={handleInputChange}
                             required
                         />
                         <div className="array-inputs">
-                            <label>Языки</label>
+                            <label>Тилдер</label>
                             {formData.languages.map((lang, index) => (
                                 <div key={index} className="array-input-row">
                                     <input
                                         type="text"
                                         value={lang}
                                         onChange={(e) => handleArrayInputChange(index, e.target.value, 'languages')}
-                                        placeholder="Язык"
+                                        placeholder="Тил"
                                         required
                                     />
                                     <button
@@ -329,19 +326,19 @@ const Register = () => {
                                 onClick={() => addArrayField('languages')}
                                 className="add-btn"
                             >
-                                + Добавить язык
+                                + Тил кошуу
                             </button>
                         </div>
 
                         <div className="array-inputs">
-                            <label>Специализации</label>
+                            <label>Адистиктер</label>
                             {formData.specializations.map((spec, index) => (
                                 <div key={index} className="array-input-row">
                                     <input
                                         type="text"
                                         value={spec}
                                         onChange={(e) => handleArrayInputChange(index, e.target.value, 'specializations')}
-                                        placeholder="Специализация"
+                                        placeholder="Адистик"
                                         required
                                     />
                                     <button
@@ -358,7 +355,7 @@ const Register = () => {
                                 onClick={() => addArrayField('specializations')}
                                 className="add-btn"
                             >
-                                + Добавить специализацию
+                                + Адистик кошуу
                             </button>
                         </div>
                     </>
@@ -366,10 +363,10 @@ const Register = () => {
             case 4:
                 return (
                     <>
-                        <h3>Дополнительная информация</h3>
+                        <h3>Кошумча маалыматтар</h3>
                         <textarea
                             name="about"
-                            placeholder="О себе"
+                            placeholder="Өзүңүз жөнүндө"
                             value={formData.about}
                             onChange={handleInputChange}
                             required
@@ -377,7 +374,7 @@ const Register = () => {
                         <input
                             type="text"
                             name="location"
-                            placeholder="Местоположение"
+                            placeholder="Жайгашкан жери"
                             value={formData.location}
                             onChange={handleInputChange}
                             required
@@ -385,7 +382,7 @@ const Register = () => {
                         <input
                             type="tel"
                             name="contactPhone"
-                            placeholder="Контактный телефон"
+                            placeholder="Байланыш телефону"
                             value={formData.contactPhone}
                             onChange={handleInputChange}
                             required
@@ -393,7 +390,7 @@ const Register = () => {
                         <input
                             type="url"
                             name="socialLinks.linkedin"
-                            placeholder="LinkedIn профиль"
+                            placeholder="LinkedIn профили"
                             value={formData.socialLinks.linkedin}
                             onChange={handleInputChange}
                         />
@@ -406,7 +403,7 @@ const Register = () => {
 
     return (
         <div className="auth-form">
-            <h1>Создать аккаунт</h1>
+            <h1>Аккаунт түзүү</h1>
             <div className="form-type-toggle">
                 <button
                     type="button"
@@ -416,7 +413,7 @@ const Register = () => {
                         setCurrentStep(1);
                     }}
                 >
-                    Пользователь
+                    Колдонуучу
                 </button>
                 <button
                     type="button"
@@ -426,7 +423,7 @@ const Register = () => {
                         setCurrentStep(1);
                     }}
                 >
-                    Профессионал
+                    Адис
                 </button>
             </div>
 
@@ -438,18 +435,18 @@ const Register = () => {
                 <div className="form-navigation">
                     {formType === 'professional' && currentStep > 1 && (
                         <button type="button" onClick={prevStep} className="prev-btn">
-                            Назад
+                            Артка
                         </button>
                     )}
                     <button type="submit" className="submit-btn">
-                        {formType === 'professional' && currentStep < totalSteps ? 'Далее' : 'Зарегистрироваться'}
+                        {formType === 'professional' && currentStep < totalSteps ? 'Кийинки' : 'Катталуу'}
                     </button>
                 </div>
             </form>
 
             {errorMessage && <div className="error-message">{errorMessage}</div>}
             <div className="auth-links">
-                Уже есть аккаунт? <Link to="/login">Войти</Link>
+                Аккаунтуңуз барбы? <Link to="/login">Кирүү</Link>
             </div>
         </div>
     );

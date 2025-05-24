@@ -33,6 +33,7 @@ const Chat = () => {
           setContacts((pros.professionals || pros).map(p => p.user).filter(u => u.id !== user.user.id));
         }
       } catch (e) {
+        console.error('Error fetching contacts:', e);
         setContacts([]);
       }
     };
@@ -46,42 +47,37 @@ const Chat = () => {
         const res = await axios.get(`${API_URL}/chat/unread`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
-        // res.data — массив сообщений, сгруппируем по senderId
+        // Группируем сообщения по отправителю
         const counts = {};
+        const lastMessages = {};
         res.data.forEach(msg => {
-          counts[msg.senderId] = (counts[msg.senderId] || 0) + 1;
+          const senderId = msg.senderId;
+          counts[senderId] = (counts[senderId] || 0) + 1;
+          // Сохраняем последнее сообщение от каждого отправителя
+          if (!lastMessages[senderId] || new Date(msg.createdAt) > new Date(lastMessages[senderId].createdAt)) {
+            lastMessages[senderId] = msg;
+          }
         });
         setUnread(counts);
+        
+        // Обновляем список контактов, добавляя отправителей непрочитанных сообщений
+        if (user?.user?.role === 'professional') {
+          const unreadSenders = res.data.map(msg => msg.sender).filter((sender, index, self) => 
+            index === self.findIndex(s => s.id === sender.id)
+          );
+          setContacts(prevContacts => {
+            const existingIds = new Set(prevContacts.map(c => c.id));
+            const newContacts = unreadSenders.filter(sender => !existingIds.has(sender.id));
+            return [...prevContacts, ...newContacts];
+          });
+        }
       } catch (e) {
+        console.error('Error fetching unread messages:', e);
         setUnread({});
       }
     };
     fetchUnread();
   }, [user, messages]);
-
-  // WebSocket подключение
-  useEffect(() => {
-    if (!user || !user.user) return;
-    socketRef.current = io(SOCKET_URL, {
-      auth: { token: localStorage.getItem('token') },
-      transports: ['websocket'],
-    });
-    socketRef.current.emit('join', user.user.id);
-    socketRef.current.on('new_message', (msg) => {
-      if (selectedContact && (msg.senderId === selectedContact.id || msg.receiverId === selectedContact.id)) {
-        setMessages(prev => [...prev, msg]);
-      }
-      // Обновить непрочитанные
-      setUnread(prev => ({ ...prev, [msg.senderId]: (prev[msg.senderId] || 0) + 1 }));
-    });
-    socketRef.current.on('messages_read', ({ receiverId }) => {
-      // Обнуляем счетчик для этого контакта
-      setUnread(prev => ({ ...prev, [receiverId]: 0 }));
-    });
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, [user, selectedContact]);
 
   // Получить историю сообщений
   const fetchMessages = async (contactId) => {
@@ -94,7 +90,10 @@ const Chat = () => {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         }
       );
-      setMessages(res.data);
+      // Сортируем сообщения по времени
+      const sortedMessages = res.data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      setMessages(sortedMessages);
+      
       // Пометить сообщения как прочитанные
       await axios.put(`${API_URL}/chat/read/${contactId}`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -103,6 +102,7 @@ const Chat = () => {
       // Сообщить через сокет
       socketRef.current.emit('mark_read', { senderId: contactId, receiverId: user.user.id });
     } catch (e) {
+      console.error('Error fetching messages:', e);
       setMessages([]);
     } finally {
       setLoading(false);
@@ -125,112 +125,196 @@ const Chat = () => {
   const handleSend = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedContact) return;
+    
+    const messageToSend = {
+      receiverId: selectedContact.id,
+      content: newMessage.trim()
+    };
+
     try {
-      const res = await axios.post(`${API_URL}/chat/send`, {
-        receiverId: selectedContact.id,
-        content: newMessage
-      }, {
+      const res = await axios.post(`${API_URL}/chat/send`, messageToSend, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      setMessages(prev => [...prev, res.data]);
+      
+      // Добавляем новое сообщение в историю
+      setMessages(prev => {
+        const newMessages = [...prev, res.data];
+        return newMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+      
       setNewMessage('');
+      
       // WebSocket отправка (для real-time)
       socketRef.current.emit('send_message', {
         senderId: user.user.id,
         receiverId: selectedContact.id,
-        content: newMessage
+        content: newMessage.trim()
       });
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error sending message:', e);
+    }
   };
 
+  // WebSocket подключение
+  useEffect(() => {
+    if (!user || !user.user) return;
+    
+    socketRef.current = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem('token') },
+      transports: ['websocket'],
+    });
+    
+    socketRef.current.emit('join', user.user.id);
+    
+    socketRef.current.on('new_message', (msg) => {
+      if (selectedContact && (msg.senderId === selectedContact.id || msg.receiverId === selectedContact.id)) {
+        setMessages(prev => {
+          const newMessages = [...prev, msg];
+          return newMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+      }
+      // Обновить непрочитанные
+      setUnread(prev => ({ ...prev, [msg.senderId]: (prev[msg.senderId] || 0) + 1 }));
+    });
+    
+    socketRef.current.on('messages_read', ({ receiverId }) => {
+      // Обнуляем счетчик для этого контакта
+      setUnread(prev => ({ ...prev, [receiverId]: 0 }));
+    });
+    
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [user, selectedContact]);
+
   return (
-    <div style={{ display: 'flex', height: '80vh', border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
-      {/* Контакты */}
-      <div style={{ width: 250, borderRight: '1px solid #eee', overflowY: 'auto', background: '#fafbfc' }}>
-        <h3 style={{ padding: 16, margin: 0 }}>Контакты</h3>
-        {contacts.map(c => (
-          <div
-            key={c.id}
-            onClick={() => setSelectedContact(c)}
-            style={{
-              padding: 12,
-              cursor: 'pointer',
-              background: selectedContact && selectedContact.id === c.id ? '#e3f2fd' : 'transparent',
-              borderBottom: '1px solid #f0f0f0',
-              position: 'relative'
-            }}
-          >
-            {c.firstName} {c.lastName || ''}
-            <div style={{ fontSize: 12, color: '#888' }}>{c.email}</div>
-            {unread[c.id] > 0 && (
-              <span style={{
-                position: 'absolute',
-                right: 12,
-                top: 12,
-                background: '#d32f2f',
-                color: '#fff',
-                borderRadius: '50%',
-                minWidth: 22,
-                height: 22,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 13,
-                fontWeight: 600
-              }}>{unread[c.id]}</span>
-            )}
-          </div>
-        ))}
-      </div>
-      {/* Чат */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#fff' }}>
-          {loading ? <div>Загрузка...</div> : (
-            Array.isArray(messages) && messages.length > 0 ? (
-              [...messages].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((msg, i) => (
-                <div key={msg.id || i} style={{
-                  textAlign: user && user.user && msg.senderId === user.user.id ? 'right' : 'left',
-                  margin: '8px 0'
-                }}>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-                    {user && user.user && msg.senderId === user.user.id
-                      ? 'Вы'
-                      : (msg.sender && (msg.sender.firstName || msg.sender.lastName)
-                        ? `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim()
-                        : 'Пользователь')}
-                    {' • '}
-                    {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                  </div>
-                  <div style={{
-                    display: 'inline-block',
-                    background: user && user.user && msg.senderId === user.user.id ? '#e3f2fd' : '#f5f5f5',
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    maxWidth: 320
-                  }}>
-                    {msg.content}
-                  </div>
+    <div style={{ 
+        display: 'flex', 
+        height: '100vh',
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center'
+    }}>
+        <div style={{ 
+            display: 'flex', 
+            height: '80vh', 
+            width: '90%',
+            maxWidth: 1200,
+            border: '1px solid #eee', 
+            borderRadius: 8, 
+            overflow: 'hidden',
+        }}>
+            {/* Контакты */}
+            <div style={{ width: 250, borderRight: '1px solid #eee', overflowY: 'auto', background: '#fafbfc' }}>
+                <h3 style={{ padding: 16, margin: 0 }}>Байланыштар</h3>
+                {contacts.map(c => (
+                    <div
+                        key={c.id}
+                        onClick={() => setSelectedContact(c)}
+                        style={{
+                            padding: 12,
+                            cursor: 'pointer',
+                            background: selectedContact && selectedContact.id === c.id ? '#e3f2fd' : 'transparent',
+                            borderBottom: '1px solid #f0f0f0',
+                            position: 'relative',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                        }}
+                    >
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            width: '100%'
+                        }}>
+                            <div style={{ fontWeight: 500 }}>
+                                {c.firstName} {c.lastName || ''}
+                            </div>
+                            {unread[c.id] > 0 && (
+                                <span style={{
+                                    background: '#d32f2f',
+                                    color: '#fff',
+                                    borderRadius: '50%',
+                                    minWidth: 22,
+                                    height: 22,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    padding: '0 6px'
+                                }}>{unread[c.id]}</span>
+                            )}
+                        </div>
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            width: '100%'
+                        }}>
+                            <div style={{ fontSize: 12, color: '#888' }}>{c.email}</div>
+                            {unread[c.id] > 0 && (
+                                <span style={{
+                                    fontSize: 12,
+                                    color: '#d32f2f',
+                                    fontWeight: 500
+                                }}>Жаңы билдирүүлөр</span>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {/* Чат */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#fff' }}>
+                    {loading ? <div>Жүктөлүүдө...</div> : (
+                        Array.isArray(messages) && messages.length > 0 ? (
+                            [...messages].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((msg, i) => (
+                                <div key={msg.id || i} style={{
+                                    textAlign: user && user.user && msg.senderId === user.user.id ? 'right' : 'left',
+                                    margin: '8px 0'
+                                }}>
+                                    <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                                        {user && user.user && msg.senderId === user.user.id
+                                            ? 'Сиз'
+                                            : (msg.sender && (msg.sender.firstName || msg.sender.lastName)
+                                                ? `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim()
+                                                : 'Колдонуучу')}
+                                        {' • '}
+                                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </div>
+                                    <div style={{
+                                        display: 'inline-block',
+                                        background: user && user.user && msg.senderId === user.user.id ? '#e3f2fd' : '#f5f5f5',
+                                        padding: '8px 12px',
+                                        borderRadius: 8,
+                                        maxWidth: 320
+                                    }}>
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>Билдирүүлөр жок</div>
+                        )
+                    )}
+                    <div ref={messagesEndRef} />
                 </div>
-              ))
-            ) : (
-              <div style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>Нет сообщений</div>
-            )
-          )}
-          <div ref={messagesEndRef} />
+                {selectedContact && (
+                    <form onSubmit={handleSend} style={{ display: 'flex', borderTop: '1px solid #eee', padding: 8, background: '#fafbfc' }}>
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={e => setNewMessage(e.target.value)}
+                            placeholder="Билдирүү жазыңыз..."
+                            style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #ccc', marginRight: 8 }}
+                        />
+                        <button type="submit" style={{ padding: '8px 16px', borderRadius: 4, background: '#1976d2', color: '#fff', border: 'none' }}>Жөнөтүү</button>
+                    </form>
+                )}
+            </div>
         </div>
-        {selectedContact && (
-          <form onSubmit={handleSend} style={{ display: 'flex', borderTop: '1px solid #eee', padding: 8, background: '#fafbfc' }}>
-            <input
-              type="text"
-              value={newMessage}
-              onChange={e => setNewMessage(e.target.value)}
-              placeholder="Введите сообщение..."
-              style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #ccc', marginRight: 8 }}
-            />
-            <button type="submit" style={{ padding: '8px 16px', borderRadius: 4, background: '#1976d2', color: '#fff', border: 'none' }}>Отправить</button>
-          </form>
-        )}
-      </div>
     </div>
   );
 };

@@ -26,16 +26,17 @@ import {
   Logout as LogoutIcon,
   PersonAdd as RegisterIcon
 } from '@mui/icons-material';
+import ChatHistory from './ChatHistory';
 import '../styles/components/_sidebar.scss';
 
 const menuItems = [
-  { label: 'Главная', path: '/', icon: <HomeIcon /> },
-  { label: 'Специалисты', path: '/specialists', icon: <SpecialistsIcon /> },
-  { label: 'Чат', path: '/chat', icon: <ChatIcon /> },
+  { label: 'Башкы бет', path: '/', icon: <HomeIcon /> },
+  { label: 'Адистер', path: '/specialists', icon: <SpecialistsIcon /> },
+  { label: 'Сүйлөшүү', path: '/chat', icon: <ChatIcon /> },
 ];
 
 const protectedMenuItems = [
-  { label: 'Личный кабинет', path: '/account', icon: <AccountIcon /> },
+  { label: 'Жеке кабинет', path: '/account', icon: <AccountIcon /> },
 ];
 
 const Sidebar = () => {
@@ -45,12 +46,29 @@ const Sidebar = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [chats, setChats] = useState([]);
+  const [selectedChatId, setSelectedChatId] = useState(null);
 
   useEffect(() => {
     if (isMobile) {
       setCollapsed(true);
     }
   }, [isMobile]);
+
+  useEffect(() => {
+    if (user) {
+      const mockChats = [
+        { id: 1, title: 'Чат с юристом', lastMessage: 'Последнее сообщение...' },
+        { id: 2, title: 'Консультация', lastMessage: 'Спасибо за помощь!' },
+      ];
+      setChats(mockChats);
+    }
+  }, [user]);
+
+  const handleChatSelect = (chatId) => {
+    setSelectedChatId(chatId);
+    navigate(`/chat/${chatId}`);
+  };
 
   const handleLogout = async () => {
     try {
@@ -164,6 +182,14 @@ const Sidebar = () => {
           ))}
         </List>
 
+        {user && !collapsed && (
+          <ChatHistory
+            chats={chats}
+            onChatSelect={handleChatSelect}
+            selectedChatId={selectedChatId}
+          />
+        )}
+
         {user ? (
           <>
             <Divider />
@@ -213,7 +239,7 @@ const Sidebar = () => {
                 }}>
                   <LogoutIcon />
                 </ListItemIcon>
-                {!collapsed && <ListItemText primary="Выйти" />}
+                {!collapsed && <ListItemText primary="Чыгуу" />}
               </ListItem>
             </List>
           </>
@@ -238,7 +264,7 @@ const Sidebar = () => {
                 }}>
                   <LoginIcon />
                 </ListItemIcon>
-                {!collapsed && <ListItemText primary="Войти" />}
+                {!collapsed && <ListItemText primary="Кирүү" />}
               </ListItem>
               <ListItem
                 button
@@ -257,7 +283,7 @@ const Sidebar = () => {
                 }}>
                   <RegisterIcon />
                 </ListItemIcon>
-                {!collapsed && <ListItemText primary="Регистрация" />}
+                {!collapsed && <ListItemText primary="Катталуу" />}
               </ListItem>
             </List>
           </>
