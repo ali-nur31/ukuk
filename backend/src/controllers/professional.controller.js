@@ -130,7 +130,7 @@ exports.getAllProfessionals = async (req, res) => {
         },
         {
           model: ProfessionalType,
-          as: 'type'
+          as: 'professionalType'
         },
         {
           model: User,
@@ -160,7 +160,7 @@ exports.getProfessionalById = async (req, res) => {
         },
         {
           model: ProfessionalType,
-          as: 'type'
+          as: 'professionalType'
         },
         {
           model: User,

@@ -2,13 +2,17 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Professionals', {
+    await queryInterface.createTable('Messages', {
       id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
         primaryKey: true
       },
-      userId: {
+      content: {
+        type: Sequelize.TEXT,
+        allowNull: false
+      },
+      senderId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
@@ -18,35 +22,23 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      typeId: {
+      receiverId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'ProfessionalTypes',
+          model: 'Users',
           key: 'id'
         },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      hourlyRate: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
-      },
-      isVerified: {
+      isRead: {
         type: Sequelize.BOOLEAN,
         defaultValue: false
       },
-      verificationToken: {
-        type: Sequelize.STRING,
+      readAt: {
+        type: Sequelize.DATE,
         allowNull: true
-      },
-      verificationStatus: {
-        type: Sequelize.STRING,
-        defaultValue: 'pending'
-      },
-      isAvailable: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -62,12 +54,13 @@ module.exports = {
       }
     });
 
-    // Добавляем индексы
-    await queryInterface.addIndex('Professionals', ['userId']);
-    await queryInterface.addIndex('Professionals', ['typeId']);
+    // Add indexes for better query performance
+    await queryInterface.addIndex('Messages', ['senderId']);
+    await queryInterface.addIndex('Messages', ['receiverId']);
+    await queryInterface.addIndex('Messages', ['createdAt']);
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Professionals');
+    await queryInterface.dropTable('Messages');
   }
 }; 
