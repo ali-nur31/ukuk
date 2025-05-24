@@ -1,71 +1,45 @@
 const jwt = require('jsonwebtoken');
 const { User, Professional, ProfessionalType, ProfessionalDetails } = require('../models');
 const { Op } = require('sequelize');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 // Регистрация обычного пользователя
 exports.registerUser = async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, firstName, lastName, phone } = req.body;
 
-    // Проверяем существование пользователя, включая мягко удаленных
-    const existingUser = await User.findOne({
-      where: {
+    // Проверяем наличие обязательных полей
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['email', 'password', 'firstName', 'lastName']
+      });
+    }
+
+    // Проверяем, не существует ли уже пользователь с таким email
+    const existingUser = await User.findOne({ 
+      where: { 
         email,
-        [Op.or]: [
-          { deletedAt: null },
-          { deletedAt: { [Op.gt]: new Date() } }
-        ]
+        deletedAt: null
       }
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Если пользователь был мягко удален, восстанавливаем его
-    const softDeletedUser = await User.findOne({
-      where: {
-        email,
-        deletedAt: { [Op.ne]: null }
-      },
-      paranoid: false // Включаем поиск мягко удаленных записей
-    });
+    // Хешируем пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (softDeletedUser) {
-      // Восстанавливаем пользователя
-      await softDeletedUser.restore();
-      // Обновляем пароль и имя
-      await softDeletedUser.update({
-        password,
-        name
-      });
-
-      // Генерируем новый токен
-      const token = jwt.sign(
-        { id: softDeletedUser.id },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      return res.status(200).json({
-        message: 'User account restored successfully',
-        token,
-        user: {
-          id: softDeletedUser.id,
-          email: softDeletedUser.email,
-          name: softDeletedUser.name,
-          role: softDeletedUser.role
-        }
-      });
-    }
-
-    // Создаем нового пользователя
+    // Создаем пользователя
     const user = await User.create({
       email,
-      password,
-      name,
-      role: 'user',
-      registrationType: 'regular'
+      password: hashedPassword,
+      firstName,
+      lastName,
+      phone,
+      isVerified: true // Устанавливаем как верифицированного сразу
     });
 
     // Генерируем JWT токен
@@ -79,14 +53,15 @@ exports.registerUser = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.status(201).json({
+    res.status(201).json({ 
       message: 'User registered successfully',
       token,
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
-        role: user.role
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone
       }
     });
   } catch (error) {
