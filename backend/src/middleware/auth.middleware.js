@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const authController = require('../controllers/auth.controller');
 
 // Middleware для проверки аутентификации
 exports.protect = async (req, res, next) => {
@@ -11,31 +12,33 @@ exports.protect = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.status(401).json({ message: 'Not authorized to access this route' });
+      return res.status(401).json({ message: 'Not authorized, no token' });
+    }
+
+    // Проверяем, не находится ли токен в черном списке
+    if (authController.isTokenBlacklisted(token)) {
+      return res.status(401).json({ message: 'Token has been invalidated' });
     }
 
     try {
-      // Верификация токена
+      // Верифицируем токен
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Получение пользователя из базы данных
-      const user = await User.findByPk(decoded.id, {
-        attributes: { exclude: ['password'] }
-      });
-
+      // Проверяем существование пользователя
+      const user = await User.findByPk(decoded.id);
       if (!user) {
         return res.status(401).json({ message: 'User not found' });
       }
 
-      // Добавление пользователя в объект запроса
+      // Добавляем пользователя в request
       req.user = user;
       next();
     } catch (error) {
-      return res.status(401).json({ message: 'Not authorized to access this route' });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   } catch (error) {
     console.error('Auth middleware error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Error in auth middleware' });
   }
 };
 

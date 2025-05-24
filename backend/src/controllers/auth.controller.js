@@ -4,6 +4,9 @@ const { Op } = require('sequelize');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
+// Черный список токенов
+const tokenBlacklist = new Set();
+
 // Регистрация обычного пользователя
 exports.registerUser = async (req, res) => {
   try {
@@ -411,4 +414,23 @@ exports.getCurrentUser = async (req, res) => {
     console.error('Get current user error:', error);
     res.status(500).json({ message: 'Error getting current user' });
   }
+};
+
+exports.logoutUser = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      // Добавляем токен в черный список
+      tokenBlacklist.add(token);
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Error during logout' });
+  }
+};
+
+// Функция для проверки токена
+exports.isTokenBlacklisted = (token) => {
+  return tokenBlacklist.has(token);
 }; 
