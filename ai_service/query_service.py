@@ -7,7 +7,7 @@ from numpy.linalg import norm
 
 app = Flask(__name__)
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key="AIzaSyBJVReTlkssEIlnajOyx_1BA486lTJTgYU")
 
 generation_config = {
     "temperature": 0.7,
