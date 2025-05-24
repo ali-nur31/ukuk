@@ -18,7 +18,10 @@ import {
     blockUserTemporary,
     blockUserPermanent,
     unblockUser,
-    blockUser
+    blockUser,
+    getUsersByStatus,
+    updateUserStatus,
+    approveLoan
 } from '../api';
 import {
     Box,
@@ -116,54 +119,30 @@ const Admin = () => {
         try {
             setLoading(true);
             let usersData = [];
-            console.log('Fetching data with filter:', filter);
             
             switch (filter) {
                 case 'vip':
-                    usersData = await getVipUsers();
-                    console.log('VIP Users data:', usersData);
+                    usersData = await getUsersByStatus('vip');
                     break;
                 case 'blocked':
-                    usersData = await getBlockedUsers();
-                    console.log('Blocked Users data:', usersData);
+                    usersData = await getUsersByStatus('blocked');
                     break;
                 default:
-                    // If we have search results, don't fetch all users
                     if (searchTerm && searchResults.length > 0) {
                         setLoading(false);
                         return;
                     }
                     usersData = await getAllUsers();
-                    console.log('All Users data:', usersData);
             }
 
-            // Обработка данных пользователей
             if (usersData && Array.isArray(usersData)) {
-                // Process users based on the actual API response format
                 const processedUsers = usersData.map(user => ({
                     id: user.id,
                     username: user.username,
                     email: user.email || '',
-                    role: {
-                        name: user.roleName || 'USER'
-                    },
-                    isVip: user.isVip || false,
-                    isBlocked: user.isBlocked || false,
-                    balance: user.balance || 0,
-                    blockExpiryDate: user.blockExpiryDate || null,
-                    blockReason: user.blockReason || ''
-                }));
-                setUsers(processedUsers);
-            } else if (usersData && usersData.data && Array.isArray(usersData.data)) {
-                const processedUsers = usersData.data.map(user => ({
-                    id: user.id,
-                    username: user.username,
-                    email: user.email || '',
-                    role: {
-                        name: user.roleName || 'USER'
-                    },
-                    isVip: user.isVip || false,
-                    isBlocked: user.isBlocked || false,
+                    role: user.role || 'USER',
+                    isVip: user.status === 'vip',
+                    isBlocked: user.status === 'blocked',
                     balance: user.balance || 0,
                     blockExpiryDate: user.blockExpiryDate || null,
                     blockReason: user.blockReason || ''
@@ -275,11 +254,11 @@ const Admin = () => {
 
     const handleUpdateVipStatus = async (userId, isVip) => {
         try {
-            await updateVipStatus(userId, isVip);
-            setSuccess(`Пользователь ${isVip ? 'добавлен в' : 'удален из'} VIP успешно`);
-            fetchData();
+            await updateUserStatus(userId, isVip ? 'vip' : 'user');
+            await fetchData();
+            setSuccess(`User ${isVip ? 'promoted to' : 'removed from'} VIP status`);
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'Failed to update VIP status');
         }
     };
 
@@ -349,11 +328,14 @@ const Admin = () => {
     };
     
     // Handle loan approval change
-    const handleLoanApprovalChange = (loanId, isApproved) => {
-        setLoansToApprove(prev => ({
-            ...prev,
-            [loanId]: isApproved
-        }));
+    const handleLoanApprovalChange = async (loanId, isApproved) => {
+        try {
+            await approveLoan(loanId, isApproved);
+            await fetchPendingLoans();
+            setSuccess(`Loan ${isApproved ? 'approved' : 'rejected'} successfully`);
+        } catch (err) {
+            setError(err.message || 'Failed to update loan status');
+        }
     };
     
     // Save loan approvals
@@ -394,31 +376,27 @@ const Admin = () => {
     };
 
     const handleBlockUser = async () => {
-        if (!userToBlock) return;
-
         try {
-            const blockData = {
-                blockType,
-                blockDays: blockType === 'temporary' ? blockDays : undefined,
-                blockReason
-            };
-
-            await blockUser(userToBlock.id, blockData);
-            setSuccess('Пользователь успешно заблокирован');
+            await blockUser(userToBlock.id, {
+                type: blockType,
+                duration: blockType === 'temporary' ? blockDays : null,
+                reason: blockReason
+            });
+            await fetchData();
             setOpenBlockDialog(false);
-            fetchData();
+            setSuccess('User blocked successfully');
         } catch (err) {
-            setError(err.message || 'Неизвестная ошибка при блокировке');
+            setError(err.message || 'Failed to block user');
         }
     };
     
     const handleUnblockUser = async (userId) => {
         try {
             await unblockUser(userId);
-            setSuccess('Пользователь успешно разблокирован');
-            fetchData();
+            await fetchData();
+            setSuccess('User unblocked successfully');
         } catch (err) {
-            setError(err.message || 'Ошибка при разблокировке пользователя');
+            setError(err.message || 'Failed to unblock user');
         }
     };
 

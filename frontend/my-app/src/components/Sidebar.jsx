@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Drawer, 
   List, 
@@ -16,7 +17,6 @@ import {
 } from '@mui/material';
 import {
   Home as HomeIcon,
-  Article as NewsIcon,
   People as SpecialistsIcon,
   Person as AccountIcon,
   Chat as ChatIcon,
@@ -30,30 +30,31 @@ import '../styles/components/_sidebar.scss';
 
 const menuItems = [
   { label: 'Главная', path: '/', icon: <HomeIcon /> },
-  { label: 'Новости', path: '/news', icon: <NewsIcon /> },
   { label: 'Специалисты', path: '/specialists', icon: <SpecialistsIcon /> },
+  { label: 'Чат', path: '/chat', icon: <ChatIcon /> },
 ];
 
 const protectedMenuItems = [
   { label: 'Личный кабинет', path: '/account', icon: <AccountIcon /> },
-  { label: 'Чат', path: '/chat', icon: <ChatIcon /> },
 ];
 
-const Sidebar = ({ user, onLogout, collapsed, setCollapsed }) => {
+const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (isMobile) {
       setCollapsed(true);
     }
-  }, [isMobile, setCollapsed]);
+  }, [isMobile]);
 
   const handleLogout = async () => {
     try {
-      await onLogout();
+      await logout();
       navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
@@ -77,10 +78,10 @@ const Sidebar = ({ user, onLogout, collapsed, setCollapsed }) => {
         variant="permanent"
         className={`sidebar ${collapsed ? 'collapsed' : ''}`}
         sx={{
-          width: collapsed ? 64 : 240,
+          width: collapsed ? 65 : 240,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
-            width: collapsed ? 64 : 240,
+            width: collapsed ? 65 : 240,
             boxSizing: 'border-box',
             transition: theme.transitions.create(['width', 'margin'], {
               easing: theme.transitions.easing.sharp,
@@ -163,7 +164,7 @@ const Sidebar = ({ user, onLogout, collapsed, setCollapsed }) => {
           ))}
         </List>
 
-        {user && (
+        {user ? (
           <>
             <Divider />
             <List>
@@ -196,61 +197,71 @@ const Sidebar = ({ user, onLogout, collapsed, setCollapsed }) => {
                   {!collapsed && <ListItemText primary={item.label} />}
                 </ListItem>
               ))}
+              <ListItem
+                button
+                onClick={handleLogout}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'initial',
+                  px: 2.5,
+                }}
+              >
+                <ListItemIcon sx={{
+                  minWidth: 0,
+                  mr: collapsed ? 'auto' : 3,
+                  justifyContent: 'center',
+                }}>
+                  <LogoutIcon />
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary="Выйти" />}
+              </ListItem>
+            </List>
+          </>
+        ) : (
+          <>
+            <Divider />
+            <List>
+              <ListItem
+                button
+                onClick={() => handleNavigation('/login')}
+                selected={location.pathname === '/login'}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'initial',
+                  px: 2.5,
+                }}
+              >
+                <ListItemIcon sx={{
+                  minWidth: 0,
+                  mr: collapsed ? 'auto' : 3,
+                  justifyContent: 'center',
+                }}>
+                  <LoginIcon />
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary="Войти" />}
+              </ListItem>
+              <ListItem
+                button
+                onClick={() => handleNavigation('/register')}
+                selected={location.pathname === '/register'}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'initial',
+                  px: 2.5,
+                }}
+              >
+                <ListItemIcon sx={{
+                  minWidth: 0,
+                  mr: collapsed ? 'auto' : 3,
+                  justifyContent: 'center',
+                }}>
+                  <RegisterIcon />
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary="Регистрация" />}
+              </ListItem>
             </List>
           </>
         )}
-
-        <Box sx={{ mt: 'auto', p: 2 }}>
-          {user ? (
-            <Button
-              fullWidth
-              variant="outlined"
-              color="error"
-              onClick={handleLogout}
-              startIcon={!collapsed && <LogoutIcon />}
-              sx={{ 
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                '&:hover': {
-                  backgroundColor: theme.palette.error.light + '20'
-                }
-              }}
-            >
-              {!collapsed && 'Выйти'}
-            </Button>
-          ) : (
-            <>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={() => handleNavigation('/login')}
-                startIcon={!collapsed && <LoginIcon />}
-                sx={{ 
-                  mb: 1, 
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.dark
-                  }
-                }}
-              >
-                {!collapsed && 'Войти'}
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleNavigation('/register')}
-                startIcon={!collapsed && <RegisterIcon />}
-                sx={{ 
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.light + '10'
-                  }
-                }}
-              >
-                {!collapsed && 'Регистрация'}
-              </Button>
-            </>
-          )}
-        </Box>
       </Drawer>
 
       {collapsed && (

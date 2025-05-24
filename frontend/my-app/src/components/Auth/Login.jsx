@@ -1,62 +1,69 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginUser } from '../../api';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-toastify';
 import '../../styles/components/_auth.scss';
 
-const Login = ({ onLogin }) => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+const Login = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = async (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
-        setErrorMessage('');
-
+        setLoading(true);
         try {
-            const response = await loginUser(email, password);
-            // Store user data
-            localStorage.setItem('user', JSON.stringify(response.user));
-            onLogin(response.user);
+            await login(formData);
+            toast.success('Successfully logged in!');
             navigate('/');
         } catch (error) {
-            console.error('Login error:', error);
-            setErrorMessage(error.message || 'Ошибка входа');
+            toast.error(error.message || 'Failed to login');
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     };
 
     return (
-        <div className="auth-form">
-            <h1>Вход в систему</h1>
-            <form onSubmit={handleLogin}>
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={isLoading}
-                />
-                <input
-                    type="password"
-                    placeholder="Пароль"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                />
-                <button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Вход...' : 'Войти'}
-                </button>
-                {errorMessage && <div className="error-message">{errorMessage}</div>}
+        <div className="auth-page-center">
+            <div className="auth-form">
+                <h1>Вход в аккаунт</h1>
+                <form onSubmit={handleSubmit}>
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="Email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                    />
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="Пароль"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                    />
+                    <button type="submit" disabled={loading}>
+                        {loading ? 'Вход...' : 'Войти'}
+                    </button>
+                </form>
                 <div className="auth-links">
                     Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
                 </div>
-            </form>
+            </div>
         </div>
     );
 };

@@ -2,25 +2,54 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:5000/api';
 
+// Utility functions
+const checkUserRole = (requiredRole) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+  return user && user.role === requiredRole;
+};
+
+const handleApiError = (error) => {
+  if (error.response) {
+    switch (error.response.status) {
+      case 401:
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        throw new Error('Unauthorized access. Please login again.');
+      case 403:
+        throw new Error('You do not have permission to perform this action.');
+      case 404:
+        throw new Error('The requested resource was not found.');
+      default:
+        throw new Error(error.response?.data?.message || 'An error occurred while processing your request.');
+    }
+  }
+  throw error;
+};
+
 // Create axios instance with interceptors
 const api = axios.create({
     baseURL: API_URL,
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    withCredentials: true
 });
 
 // Request interceptor
 api.interceptors.request.use(config => {
-    // Skip token check for auth endpoints
-    if (config.url.startsWith('/auth/')) {
+    // Не добавляем токен только для login/register
+    if (
+        config.url === '/auth/login' ||
+        config.url === '/auth/register/user' ||
+        config.url === '/auth/register/professional'
+    ) {
         return config;
     }
-
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
 });
@@ -35,17 +64,16 @@ api.interceptors.response.use(
 
         if (error.response.status === 401 && !error.config._retry) {
             error.config._retry = true;
-                    try {
-                        const refreshToken = localStorage.getItem('refreshToken');
-                const response = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken });
-                        localStorage.setItem('accessToken', response.data.accessToken);
-                error.config.headers.Authorization = `Bearer ${response.data.accessToken}`;
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.post(`${API_URL}/auth/refresh-token`, { token });
+                localStorage.setItem('token', response.data.token);
+                error.config.headers.Authorization = `Bearer ${response.data.token}`;
                 return axios(error.config);
-                    } catch (refreshError) {
-                        localStorage.removeItem('accessToken');
-                        localStorage.removeItem('refreshToken');
-                        window.location.href = '/login';
-                        return Promise.reject(refreshError);
+            } catch (refreshError) {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+                return Promise.reject(refreshError);
             }
         }
         return Promise.reject(error);
@@ -63,7 +91,7 @@ export const registerUser = async (userData) => {
         const response = await api.post('/auth/register/user', userData);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Registration failed');
+        handleApiError(error);
     }
 };
 
@@ -72,49 +100,71 @@ export const registerProfessional = async (professionalData) => {
         const response = await api.post('/auth/register/professional', professionalData);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Professional registration failed');
+        handleApiError(error);
     }
 };
 
-export const loginUser = async (email, password) => {
+export const loginUser = async (credentials) => {
     try {
-        const response = await api.post('/auth/login', { email, password });
-        if (response.data.accessToken) {
-            localStorage.setItem('accessToken', response.data.accessToken);
-            localStorage.setItem('refreshToken', response.data.refreshToken);
+        const response = await api.post('/auth/login', credentials);
+        if (response.data.token) {
+            localStorage.setItem('token', response.data.token);
         }
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Login failed');
+        handleApiError(error);
     }
 };
 
 export const getCurrentUser = async () => {
     try {
-        console.log('Getting current user...');
-        console.log('Access token:', localStorage.getItem('accessToken'));
-        
         const response = await api.get('/auth/me');
-        console.log('Response from /auth/me:', response.data);
-        
-        // Backend returns { user: {...}, professional: {...} }
-        const userData = response.data.user || response.data;
-        console.log('Processed user data:', userData);
-        
-        return userData;
+        return response.data;
     } catch (error) {
-        console.error('Error in getCurrentUser:', error);
-        console.error('Error response:', error.response?.data);
-        console.error('Error status:', error.response?.status);
-        
-        if (error.response?.status === 401) {
-            console.log('Authentication error, clearing tokens...');
-            // Clear tokens on authentication error
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-        }
-        throw new Error(error.response?.data?.message || 'Failed to fetch user data');
+        handleApiError(error);
+    }
+};
+
+// User endpoints
+export const getAllUsers = async () => {
+    if (!checkUserRole('admin')) {
+        throw new Error('Only administrators can view all users');
+    }
+    try {
+        const response = await api.get('/users');
+        return response.data;
+    } catch (error) {
+        handleApiError(error);
+    }
+};
+
+export const getUserById = async (id) => {
+    try {
+        const response = await api.get(`/users/${id}`);
+        return response.data;
+    } catch (error) {
+        handleApiError(error);
+    }
+};
+
+export const updateUserProfile = async (userId, userData) => {
+    try {
+        const response = await api.put(`/users/${userId}`, userData);
+        return response.data;
+    } catch (error) {
+        handleApiError(error);
+    }
+};
+
+export const deleteUser = async (id) => {
+    if (!checkUserRole('admin')) {
+        throw new Error('Only administrators can delete users');
+    }
+    try {
+        const response = await api.delete(`/users/${id}`);
+        return response.data;
+    } catch (error) {
+        handleApiError(error);
     }
 };
 
@@ -124,7 +174,7 @@ export const getAllProfessionals = async (params = {}) => {
         const response = await api.get('/professionals', { params });
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch professionals');
+        handleApiError(error);
     }
 };
 
@@ -133,25 +183,31 @@ export const getProfessionalById = async (id) => {
         const response = await api.get(`/professionals/${id}`);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch professional');
+        handleApiError(error);
     }
 };
 
 export const updateProfessionalProfile = async (profileData) => {
+    if (!checkUserRole('professional')) {
+        throw new Error('Only professionals can update their profile');
+    }
     try {
         const response = await api.put('/professionals/profile', profileData);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to update professional profile');
+        handleApiError(error);
     }
 };
 
 export const deleteProfessionalProfile = async () => {
+    if (!checkUserRole('professional')) {
+        throw new Error('Only professionals can delete their profile');
+    }
     try {
         const response = await api.delete('/professionals/profile');
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to delete professional profile');
+        handleApiError(error);
     }
 };
 
@@ -161,7 +217,7 @@ export const getProfessionalTypes = async () => {
         const response = await api.get('/professional-types');
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch professional types');
+        handleApiError(error);
     }
 };
 
@@ -170,109 +226,53 @@ export const getProfessionalTypeById = async (id) => {
         const response = await api.get(`/professional-types/${id}`);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch professional type');
+        handleApiError(error);
     }
 };
 
 export const createProfessionalType = async (typeData) => {
+    if (!checkUserRole('admin')) {
+        throw new Error('Only administrators can create professional types');
+    }
     try {
         const response = await api.post('/professional-types', typeData);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to create professional type');
+        handleApiError(error);
     }
 };
 
 export const updateProfessionalType = async (id, typeData) => {
+    if (!checkUserRole('admin')) {
+        throw new Error('Only administrators can update professional types');
+    }
     try {
         const response = await api.put(`/professional-types/${id}`, typeData);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to update professional type');
+        handleApiError(error);
     }
 };
 
 export const deleteProfessionalType = async (id) => {
+    if (!checkUserRole('admin')) {
+        throw new Error('Only administrators can delete professional types');
+    }
     try {
         const response = await api.delete(`/professional-types/${id}`);
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to delete professional type');
+        handleApiError(error);
     }
 };
 
-// User endpoints
-export const getAllUsers = async () => {
-    try {
-        const response = await api.get('/users');
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch users');
-    }
-};
+export const uploadProfilePhoto = async (professionalId, file) => {
+  const formData = new FormData();
+  formData.append('photo', file);
 
-export const getUserById = async (id) => {
-    try {
-        const response = await api.get(`/users/${id}`);
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch user');
-    }
-};
-
-export const updateUser = async (id, userData) => {
-    try {
-        const response = await api.put(`/users/${id}`, userData);
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to update user');
-    }
-};
-
-export const deleteUser = async (id) => {
-    try {
-        const response = await api.delete(`/users/${id}`);
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to delete user');
-    }
-};
-
-// Chat endpoints
-export const getChatHistory = async (userId, params = {}) => {
-    try {
-        const response = await api.get(`/chat/${userId}`, { params });
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch chat history');
-    }
-};
-
-export const sendMessage = async (messageData) => {
-    try {
-        const response = await api.post('/chat', messageData);
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to send message');
-    }
-};
-
-export const getUnreadMessages = async () => {
-    try {
-        const response = await api.get('/chat/unread');
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch unread messages');
-    }
-};
-
-export const markMessagesAsRead = async (senderId) => {
-    try {
-        const response = await api.put(`/chat/read/${senderId}`);
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Failed to mark messages as read');
-    }
+  // Не указывай Content-Type, axios сам выставит boundary для form-data!
+  const response = await api.post(`/professionals/${professionalId}/photo`, formData);
+  return response.data;
 };
 
 export default api;

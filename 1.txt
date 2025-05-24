@@ -1,1 +1,117 @@
-123
+I'll help you understand how to work with this AI service. Let me check the contents of the key files to provide you with instructions.
+
+First, let me look at the requirements.txt to see what dependencies are needed:
+
+
+Read file: /c:/123321312312/Polniy_bankich/ai_service/requirements.txt
+Let me also check the main service file:
+
+
+Read file: /c:/123321312312/Polniy_bankich/ai_service/query_service.py
+Based on the code I've reviewed, here's how to get started with this AI service:
+
+1. First, set up the Python environment:
+   ```bash
+   cd ai_service
+   python -m venv venv
+   .\venv\Scripts\activate  # On Windows
+   pip install -r requirements.txt
+   ```
+
+2. The service requires a Google API key for Gemini AI. I notice there's one in the code, but it's better to use your own. You'll need to:
+   - Get an API key from Google AI Studio (https://makersuite.google.com/app/apikey)
+   - Replace the API key in `query_service.py` with your own
+
+3. The service appears to be working with a document (`uk_kr.docx`) and needs to generate embeddings first. Let me check the embedding generation script:
+
+
+Read file: /c:/123321312312/Polniy_bankich/ai_service/generate_embbedings.py
+4. To set up the service, follow these steps:
+
+   a. First, generate the embeddings:
+   ```bash
+   python generate_embbedings.py
+   ```
+   This will process the `uk_kr.docx` file and create embeddings in the `data` folder.
+
+   b. Then start the service:
+   ```bash
+   python query_service.py
+   ```
+   The service will start on port 5001.
+
+5. To use the service, you can send POST requests to `http://localhost:5001/query` with a JSON body containing your question:
+   ```json
+   {
+     "question": "Ваш вопрос на кыргызском языке"
+   }
+   ```
+
+The service will:
+1. Convert your question into an embedding
+2. Find the most similar chunks from the document
+3. Use these chunks as context to generate an answer using Google's Gemini AI model
+4. Return the answer in Kyrgyz language
+
+Important notes:
+- Make sure you have a valid Google API key
+- The service is designed to work with Kyrgyz language questions and answers
+- The document being used appears to be related to the Criminal Code of the Kyrgyz Republic
+- The service uses embeddings to find relevant context before generating answers
+
+Would you like me to help you with any specific part of the setup or do you have any questions about how it works?
+
+
+I'll help you understand what's needed to run the backend. Let me check the package.json file to see the dependencies and setup requirements.
+
+
+Read file: /c:/123321312312/Polniy_bankich/backend/package.json
+Let me check if there's a configuration file that might contain important setup information.
+
+
+Ran tool
+
+Read file: /c:/123321312312/Polniy_bankich/backend/config/config.json
+Для запуска бэкенда вам потребуется:
+
+1. **Node.js и npm**
+   - Установите Node.js (рекомендуется последняя LTS версия)
+   - npm будет установлен автоматически с Node.js
+
+2. **База данных**
+   - PostgreSQL (судя по зависимостям в package.json)
+   - Создайте базу данных и настройте подключение в файле `config/config.json`
+
+3. **Установка зависимостей**
+   ```bash
+   cd backend
+   npm install
+   ```
+
+4. **Настройка переменных окружения**
+   - Создайте файл `.env` в корневой папке backend
+   - Добавьте необходимые переменные окружения (JWT_SECRET, DATABASE_URL и т.д.)
+
+5. **Запуск миграций базы данных**
+   ```bash
+   npm run migrate
+   ```
+   npx sequelize-cli db:seed:all
+
+6. **Запуск сервера**
+   - Для разработки:
+     ```bash
+     npm run dev
+     ```
+   - Для продакшена:
+     ```bash
+     npm start
+     ```
+
+Дополнительные требования:
+- Убедитесь, что порт, на котором запускается сервер (обычно 3000 или 5000), свободен
+- Проверьте, что все необходимые сервисы (PostgreSQL) запущены
+- Если используется Google OAuth (судя по наличию client_secret файла), убедитесь, что учетные данные Google настроены правильно
+
+Хотите, чтобы я помог вам с каким-то конкретным шагом настройки?
+

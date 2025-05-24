@@ -7,11 +7,12 @@
 
 .main-content {
   flex: 1;
-  padding: 24px;
+  /* padding: 24px; */
   transition: all 0.3s ease-in-out;
   background-color: #fff;
   box-sizing: border-box;
   margin-left: 240px;
+  overflow: visible;
 }
 
 .main-content.sidebar-collapsed {
@@ -19,6 +20,18 @@
 }
 
 .sidebar {
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  min-width: 65px;
+  background-color: var(--sidebar-bg-color);
+  color: var(--sidebar-text-color);
+  transition: width 0.3s ease-in-out;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1000;
+
   .MuiDrawer-paper {
     position: fixed;
     height: 100vh;

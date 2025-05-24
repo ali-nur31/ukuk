@@ -5,3 +5,4 @@ scikit-learn
 google-generativeai 
 google.genai
 dotenv
+flask-cors

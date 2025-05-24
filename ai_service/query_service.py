@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import numpy as np
 import json
 import os
@@ -6,6 +7,14 @@ import google.generativeai as genai
 from numpy.linalg import norm
 
 app = Flask(__name__)
+CORS(app, resources={
+    r"/query": {
+        "origins": ["http://localhost:5173"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Accept"],
+        "supports_credentials": True
+    }
+})
 
 genai.configure(api_key="AIzaSyBJVReTlkssEIlnajOyx_1BA486lTJTgYU")
 

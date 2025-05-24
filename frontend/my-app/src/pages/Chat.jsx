@@ -1,191 +1,235 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getChatHistory, sendMessage, getUnreadMessages, markMessagesAsRead } from '../api';
-import { getCurrentUser } from '../api';
+import React, { useEffect, useState, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { getAllProfessionals, getAllUsers } from '../api';
+import axios from 'axios';
+import { io } from 'socket.io-client';
+
+const API_URL = 'http://127.0.0.1:5000/api';
+const SOCKET_URL = 'http://127.0.0.1:5000';
 
 const Chat = () => {
-  const { userId } = useParams();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [contacts, setContacts] = useState([]);
+  const [selectedContact, setSelectedContact] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [unread, setUnread] = useState({}); // { userId: count }
+  const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Fetch current user and chat history
+  // Получить список контактов (все специалисты, если ты user, или все users, если ты professional)
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchContacts = async () => {
       try {
-        setLoading(true);
-        const [userData, chatData] = await Promise.all([
-          getCurrentUser(),
-          getChatHistory(userId, { limit: 50 })
-        ]);
-        setCurrentUser(userData);
-        setMessages(chatData.messages || []);
-        
-        // Mark messages as read
-        if (chatData.messages?.length > 0) {
-          await markMessagesAsRead(userId);
+        if (!user || !user.user) return;
+        if (user.user.role === 'professional') {
+          // Для профессионала — все пользователи
+          const users = await getAllUsers();
+          setContacts(users.filter(u => u.id !== user.user.id));
+        } else {
+          // Для обычного пользователя — все профессионалы
+          const pros = await getAllProfessionals();
+          setContacts((pros.professionals || pros).map(p => p.user).filter(u => u.id !== user.user.id));
         }
-      } catch (err) {
-        setError(err.message);
-        if (err.message.includes('unauthorized')) {
-          navigate('/login');
-        }
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        setContacts([]);
       }
     };
+    fetchContacts();
+  }, [user]);
 
-    fetchData();
-    // Set up polling for new messages
-    const pollInterval = setInterval(fetchData, 5000);
-    return () => clearInterval(pollInterval);
-  }, [userId, navigate]);
+  // Получить непрочитанные сообщения
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/chat/unread`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        // res.data — массив сообщений, сгруппируем по senderId
+        const counts = {};
+        res.data.forEach(msg => {
+          counts[msg.senderId] = (counts[msg.senderId] || 0) + 1;
+        });
+        setUnread(counts);
+      } catch (e) {
+        setUnread({});
+      }
+    };
+    fetchUnread();
+  }, [user, messages]);
 
-  // Scroll to bottom when messages change
+  // WebSocket подключение
+  useEffect(() => {
+    if (!user || !user.user) return;
+    socketRef.current = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem('token') },
+      transports: ['websocket'],
+    });
+    socketRef.current.emit('join', user.user.id);
+    socketRef.current.on('new_message', (msg) => {
+      if (selectedContact && (msg.senderId === selectedContact.id || msg.receiverId === selectedContact.id)) {
+        setMessages(prev => [...prev, msg]);
+      }
+      // Обновить непрочитанные
+      setUnread(prev => ({ ...prev, [msg.senderId]: (prev[msg.senderId] || 0) + 1 }));
+    });
+    socketRef.current.on('messages_read', ({ receiverId }) => {
+      // Обнуляем счетчик для этого контакта
+      setUnread(prev => ({ ...prev, [receiverId]: 0 }));
+    });
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [user, selectedContact]);
+
+  // Получить историю сообщений
+  const fetchMessages = async (contactId) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(
+        `${API_URL}/chat/history/${contactId}`,
+        {
+          params: { limit: 50, offset: 0 },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }
+      );
+      setMessages(res.data);
+      // Пометить сообщения как прочитанные
+      await axios.put(`${API_URL}/chat/read/${contactId}`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setUnread(prev => ({ ...prev, [contactId]: 0 }));
+      // Сообщить через сокет
+      socketRef.current.emit('mark_read', { senderId: contactId, receiverId: user.user.id });
+    } catch (e) {
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // При выборе контакта — загрузить историю
+  useEffect(() => {
+    if (selectedContact) {
+      fetchMessages(selectedContact.id);
+    }
+  }, [selectedContact]);
+
+  // Скролл вниз при новых сообщениях
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || !currentUser) return;
-
+  // Отправить сообщение
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedContact) return;
     try {
-      const newMessage = {
-        receiverId: Number(userId),
-        content: input.trim()
-      };
-
-      const response = await sendMessage(newMessage);
-      setMessages(prev => [...prev, response]);
-      setInput('');
-    } catch (err) {
-      setError(err.message);
-    }
+      const res = await axios.post(`${API_URL}/chat/send`, {
+        receiverId: selectedContact.id,
+        content: newMessage
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setMessages(prev => [...prev, res.data]);
+      setNewMessage('');
+      // WebSocket отправка (для real-time)
+      socketRef.current.emit('send_message', {
+        senderId: user.user.id,
+        receiverId: selectedContact.id,
+        content: newMessage
+      });
+    } catch (e) {}
   };
 
-  if (loading) {
-    return <div style={{ padding: 32, textAlign: 'center' }}>Загрузка чата...</div>;
-  }
-
-  if (error) {
-    return <div style={{ padding: 32, color: 'red' }}>Ошибка: {error}</div>;
-  }
-
-  if (!currentUser) {
-    return <div style={{ padding: 32 }}>Пожалуйста, войдите в систему</div>;
-  }
-
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: '2rem 0' }}>
-      <div style={{ 
-        background: '#fff', 
-        borderRadius: 12, 
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        height: '80vh',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        {/* Chat header */}
-        <div style={{ 
-          padding: '1rem', 
-          borderBottom: '1px solid #eee',
-          background: '#f8f9fa',
-          borderRadius: '12px 12px 0 0'
-        }}>
-          <h2 style={{ margin: 0, color: '#1976d2' }}>Чат</h2>
-        </div>
-
-        {/* Messages container */}
-        <div style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          padding: '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem'
-        }}>
-          {messages.map((msg, idx) => (
-            <div
-              key={msg.id || idx}
-              style={{
-                alignSelf: msg.senderId === currentUser.id ? 'flex-end' : 'flex-start',
-                maxWidth: '70%',
-                background: msg.senderId === currentUser.id ? '#1976d2' : '#f0f2f5',
-                color: msg.senderId === currentUser.id ? '#fff' : '#000',
-                padding: '0.75rem 1rem',
-                borderRadius: '1rem',
-                marginBottom: '0.5rem',
-                wordBreak: 'break-word'
-              }}
-            >
-              <div style={{ fontSize: '0.9rem' }}>{msg.content}</div>
-              <div style={{ 
-                fontSize: '0.75rem', 
-                opacity: 0.7,
-                marginTop: '0.25rem',
-                textAlign: 'right'
-              }}>
-                {new Date(msg.createdAt).toLocaleTimeString()}
-              </div>
-            </div>
-          ))}
+    <div style={{ display: 'flex', height: '80vh', border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
+      {/* Контакты */}
+      <div style={{ width: 250, borderRight: '1px solid #eee', overflowY: 'auto', background: '#fafbfc' }}>
+        <h3 style={{ padding: 16, margin: 0 }}>Контакты</h3>
+        {contacts.map(c => (
+          <div
+            key={c.id}
+            onClick={() => setSelectedContact(c)}
+            style={{
+              padding: 12,
+              cursor: 'pointer',
+              background: selectedContact && selectedContact.id === c.id ? '#e3f2fd' : 'transparent',
+              borderBottom: '1px solid #f0f0f0',
+              position: 'relative'
+            }}
+          >
+            {c.firstName} {c.lastName || ''}
+            <div style={{ fontSize: 12, color: '#888' }}>{c.email}</div>
+            {unread[c.id] > 0 && (
+              <span style={{
+                position: 'absolute',
+                right: 12,
+                top: 12,
+                background: '#d32f2f',
+                color: '#fff',
+                borderRadius: '50%',
+                minWidth: 22,
+                height: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 13,
+                fontWeight: 600
+              }}>{unread[c.id]}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Чат */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#fff' }}>
+          {loading ? <div>Загрузка...</div> : (
+            Array.isArray(messages) && messages.length > 0 ? (
+              [...messages].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((msg, i) => (
+                <div key={msg.id || i} style={{
+                  textAlign: user && user.user && msg.senderId === user.user.id ? 'right' : 'left',
+                  margin: '8px 0'
+                }}>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                    {user && user.user && msg.senderId === user.user.id
+                      ? 'Вы'
+                      : (msg.sender && (msg.sender.firstName || msg.sender.lastName)
+                        ? `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim()
+                        : 'Пользователь')}
+                    {' • '}
+                    {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </div>
+                  <div style={{
+                    display: 'inline-block',
+                    background: user && user.user && msg.senderId === user.user.id ? '#e3f2fd' : '#f5f5f5',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    maxWidth: 320
+                  }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>Нет сообщений</div>
+            )
+          )}
           <div ref={messagesEndRef} />
         </div>
-
-        {/* Input area */}
-        <div style={{ 
-          padding: '1rem',
-          borderTop: '1px solid #eee',
-          background: '#fff',
-          borderRadius: '0 0 12px 12px'
-        }}>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+        {selectedContact && (
+          <form onSubmit={handleSend} style={{ display: 'flex', borderTop: '1px solid #eee', padding: 8, background: '#fafbfc' }}>
             <input
               type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
               placeholder="Введите сообщение..."
-              style={{
-                flex: 1,
-                padding: '0.75rem',
-                borderRadius: '1.5rem',
-                border: '1px solid #e0e0e0',
-                fontSize: '1rem',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                '&:focus': {
-                  borderColor: '#1976d2'
-                }
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
+              style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #ccc', marginRight: 8 }}
             />
-            <button
-              onClick={handleSendMessage}
-              disabled={!input.trim()}
-              style={{
-                background: input.trim() ? '#1976d2' : '#e0e0e0',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '1.5rem',
-                padding: '0.75rem 1.5rem',
-                fontWeight: 500,
-                cursor: input.trim() ? 'pointer' : 'not-allowed',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              Отправить
-            </button>
-          </div>
-        </div>
+            <button type="submit" style={{ padding: '8px 16px', borderRadius: 4, background: '#1976d2', color: '#fff', border: 'none' }}>Отправить</button>
+          </form>
+        )}
       </div>
     </div>
   );

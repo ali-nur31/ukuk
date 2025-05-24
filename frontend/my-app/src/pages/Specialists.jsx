@@ -58,8 +58,10 @@ const Specialists = () => {
                 maxHourlyRate: filters.maxHourlyRate,
                 isAvailable: filters.isAvailable
             };
+            console.log('Параметры запроса:', params);
             const data = await getAllProfessionals(params);
-            setProfessionals(data.professionals || []);
+            console.log('Ответ от бэкенда:', data);
+            setProfessionals(Array.isArray(data) ? data : (data.professionals || []));
             setError(null);
         } catch (err) {
             setError('Failed to fetch professionals. Please try again later.');
@@ -100,6 +102,13 @@ const Specialists = () => {
         navigate(`/chat/${professionalId}`);
     };
 
+    // Функция для парсинга строк PostgreSQL-массивов вида '{"English","Russian"}' в массив JS
+    function parsePgArray(str) {
+        if (!str) return [];
+        if (Array.isArray(str)) return str;
+        return str.replace(/^{|}$/g, '').split(',').map(s => s.replace(/"/g, '').trim()).filter(Boolean);
+    }
+
     if (loading && !professionals.length) {
         return (
             <div className="specialists-page loading">
@@ -117,6 +126,8 @@ const Specialists = () => {
             </div>
         );
     }
+
+    console.log('professionals:', professionals);
 
     return (
         <div className="specialists-page">
@@ -196,17 +207,17 @@ const Specialists = () => {
                     >
                         <div className="professional-header">
                             <div className="professional-avatar">
-                                {professional.photoUrl ? (
-                                    <img src={professional.photoUrl} alt={`${professional.firstName} ${professional.lastName}`} />
+                                {professional.details.profilePhoto ? (
+                                    <img src={professional.details.profilePhoto} alt="Фото" />
                                 ) : (
                                     <div className="avatar-placeholder">
-                                        {professional.firstName[0]}{professional.lastName[0]}
+                                        {professional.user.firstName[0]}{professional.user.lastName[0]}
                                     </div>
                                 )}
                             </div>
                             <div className="professional-title">
-                                <h2>{professional.firstName} {professional.lastName}</h2>
-                                <span className="professional-type">{professional.professionalTypeName}</span>
+                                <h2>{professional.user.firstName} {professional.user.lastName}</h2>
+                                <span className="professional-type">{professional.professionalType.name}</span>
                             </div>
                             <div className="professional-status">
                                 {professional.isAvailable ? (
@@ -220,20 +231,20 @@ const Specialists = () => {
                         <div className="professional-info">
                             <div className="info-section">
                                 <h3>О специалисте</h3>
-                                <p>{professional.about}</p>
+                                <p>{professional.details.about}</p>
                             </div>
 
                             <div className="info-section">
                                 <h3>Опыт и ставка</h3>
-                                <p>Опыт: {professional.experience} лет</p>
+                                <p>Опыт: {'Не указано'}</p>
                                 <p>Ставка: ${professional.hourlyRate}/час</p>
                             </div>
 
                             <div className="info-section">
                                 <h3>Специализации</h3>
                                 <div className="tags">
-                                    {professional.specializations.map((spec, index) => (
-                                        <span key={index} className="tag">{spec}</span>
+                                    {parsePgArray(professional.details.specializations).map((spec, i) => (
+                                        <span key={i} className="tag">{spec}</span>
                                     ))}
                                 </div>
                             </div>
@@ -241,8 +252,8 @@ const Specialists = () => {
                             <div className="info-section">
                                 <h3>Языки</h3>
                                 <div className="tags">
-                                    {professional.languages.map((lang, index) => (
-                                        <span key={index} className="tag">{lang}</span>
+                                    {parsePgArray(professional.details.languages).map((lang, i) => (
+                                        <span key={i} className="tag">{lang}</span>
                                     ))}
                                 </div>
                             </div>
@@ -274,27 +285,27 @@ const Specialists = () => {
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <button className="close-button" onClick={() => setSelectedProfessional(null)}>×</button>
                         <div className="modal-header">
-                            <h2>{selectedProfessional.firstName} {selectedProfessional.lastName}</h2>
-                            <span className="professional-type">{selectedProfessional.professionalTypeName}</span>
+                            <h2>{selectedProfessional.user.firstName} {selectedProfessional.user.lastName}</h2>
+                            <span className="professional-type">{selectedProfessional.professionalType.name}</span>
                         </div>
                         <div className="modal-body">
                             <div className="info-section">
                                 <h3>Образование</h3>
-                                <p>{selectedProfessional.education}</p>
+                                <p>{selectedProfessional.details.education}</p>
                             </div>
                             <div className="info-section">
                                 <h3>Сертификаты</h3>
-                                <p>{selectedProfessional.certifications}</p>
+                                <p>{selectedProfessional.details.certifications}</p>
                             </div>
                             <div className="info-section">
                                 <h3>Контакты</h3>
-                                <p>📍 {selectedProfessional.location}</p>
-                                <p>📞 {selectedProfessional.contactPhone}</p>
-                                {selectedProfessional.socialLinks && (
+                                <p>📍 {selectedProfessional.details.location}</p>
+                                <p>📞 {selectedProfessional.details.contactPhone}</p>
+                                {selectedProfessional.details.socialLinks && (
                                     <div className="social-links">
-                                        {selectedProfessional.socialLinks.linkedin && (
+                                        {selectedProfessional.details.socialLinks.linkedin && (
                                             <a 
-                                                href={selectedProfessional.socialLinks.linkedin}
+                                                href={selectedProfessional.details.socialLinks.linkedin}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="social-link linkedin"
@@ -302,9 +313,9 @@ const Specialists = () => {
                                                 LinkedIn
                                             </a>
                                         )}
-                                        {selectedProfessional.socialLinks.website && (
+                                        {selectedProfessional.details.socialLinks.website && (
                                             <a 
-                                                href={selectedProfessional.socialLinks.website}
+                                                href={selectedProfessional.details.socialLinks.website}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="social-link website"
