@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'http://localhost:5000/api';
 
 // Создаем оригинальный экземпляр axios без интерцепторов
 const originalApi = axios.create({
@@ -22,6 +22,11 @@ const api = axios.create({
 
 // Интерцептор запросов - сначала пробуем с access token
 api.interceptors.request.use(config => {
+    // Skip token check for auth endpoints
+    if (config.url.startsWith('/auth/')) {
+        return config;
+    }
+
     const accessToken = localStorage.getItem('accessToken');
     console.log('Outgoing request to:', config.url);
 
@@ -151,10 +156,50 @@ export const getAccountData = async (refreshToken) => {
         throw new Error(error.response?.data?.message || 'Failed to fetch account data');
     }
 };
-export const loginUser = async (username, password) => {
+
+export const registerUser = async (userData) => {
     try {
-        const response = await axios.post(`${API_URL}/auth/login`, {
-            username,
+        const response = await api.post('/auth/register/user', {
+            email: userData.email,
+            password: userData.password,
+            firstName: userData.firstName,
+            lastName: userData.lastName
+        });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Registration failed');
+    }
+};
+
+export const registerProfessional = async (professionalData) => {
+    try {
+        const response = await api.post('/auth/register/professional', {
+            email: professionalData.email,
+            password: professionalData.password,
+            firstName: professionalData.firstName,
+            lastName: professionalData.lastName,
+            professionalTypeName: professionalData.professionalTypeName,
+            experience: professionalData.experience,
+            hourlyRate: professionalData.hourlyRate,
+            education: professionalData.education,
+            certifications: professionalData.certifications,
+            languages: professionalData.languages,
+            specializations: professionalData.specializations,
+            about: professionalData.about,
+            location: professionalData.location,
+            contactPhone: professionalData.contactPhone,
+            socialLinks: professionalData.socialLinks
+        });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Professional registration failed');
+    }
+};
+
+export const loginUser = async (email, password) => {
+    try {
+        const response = await api.post('/auth/login', {
+            email,
             password
         });
 
@@ -173,15 +218,6 @@ export const logout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
-};
-
-export const registerUser = async (userData) => {
-    try {
-        const response = await axios.post(`${API_URL}/auth/register`, userData);
-        return response.data;
-    } catch (error) {
-        throw new Error(error.response?.data?.message || 'Registration failed');
-    }
 };
 
 // Добавьте эти функции в ваш существующий api.js файл
@@ -343,12 +379,7 @@ export const getLoanTransactions = async (loanId) => {
 export const getCurrentUser = async () => {
     try {
         const response = await api.get('/auth/me');
-        return {
-            id: response.data.id,
-            username: response.data.username,
-            email: response.data.email,
-            role: response.data.role
-        };
+        return response.data;
     } catch (error) {
         throw new Error(error.response?.data?.message || 'Failed to fetch user data');
     }
@@ -411,18 +442,12 @@ export const updateUserRole = async (id, roleName) => {
     }
 };
 
-export const deleteUser = async (id) => {
+export const deleteUser = async (userId) => {
     try {
-        const response = await api.delete(`/admin/user/${id}`);
+        const response = await api.delete(`/users/${userId}`);
         return response.data;
     } catch (error) {
-        // Добавляем более информативное сообщение об ошибке
-        const errorMessage = error.response?.data?.message
-            || error.response?.data
-            || error.message
-            || 'Failed to delete user';
-        console.error('Delete user error:', errorMessage);
-        throw new Error(errorMessage);
+        throw new Error(error.response?.data?.message || 'Failed to delete user');
     }
 };
 
@@ -629,6 +654,82 @@ export const unblockUser = async (userId) => {
     console.error('Error unblocking user:', error);
     throw error;
   }
+};
+
+// Professional API functions
+export const getAllProfessionals = async () => {
+    try {
+        const response = await api.get('/professionals');
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Failed to fetch professionals');
+    }
+};
+
+export const getProfessionalById = async (id) => {
+    try {
+        const response = await api.get(`/professionals/${id}`);
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Failed to fetch professional');
+    }
+};
+
+export const updateProfessionalProfile = async (profileData) => {
+    try {
+        const response = await api.put('/professionals/profile', {
+            professionalTypeName: profileData.professionalTypeName,
+            experience: profileData.experience,
+            hourlyRate: profileData.hourlyRate,
+            isAvailable: profileData.isAvailable,
+            education: profileData.education,
+            certifications: profileData.certifications,
+            languages: profileData.languages,
+            specializations: profileData.specializations,
+            about: profileData.about,
+            location: profileData.location,
+            contactPhone: profileData.contactPhone,
+            socialLinks: profileData.socialLinks
+        });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Failed to update professional profile');
+    }
+};
+
+export const deleteProfessionalProfile = async () => {
+    try {
+        const response = await api.delete('/professionals/profile');
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Failed to delete professional profile');
+    }
+};
+
+export const uploadProfessionalPhoto = async (userId, photoFile) => {
+    try {
+        const formData = new FormData();
+        formData.append('photo', photoFile);
+
+        const response = await api.post(`/professionals/${userId}/photo`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Failed to upload professional photo');
+    }
+};
+
+// Get all professional types
+export const getProfessionalTypes = async () => {
+    try {
+        const response = await api.get('/professional-types');
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || 'Failed to fetch professional types');
+    }
 };
 
 export default api;

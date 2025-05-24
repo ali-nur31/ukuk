@@ -4,7 +4,7 @@ import api, { getCurrentUser, loginUser, getUserRole } from '../../api';
 import '../../styles/components/_auth.scss';
 
 const Login = ({ onLogin }) => {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [success, setSuccess] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -13,8 +13,8 @@ const Login = ({ onLogin }) => {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const response = await loginUser(username, password);
-            console.log('Полученные данные пользователя при входе:', response);
+            const response = await loginUser(email, password);
+            console.log('Login response:', response);
             
             // Сохраняем токены
             localStorage.setItem('accessToken', response.accessToken);
@@ -22,11 +22,11 @@ const Login = ({ onLogin }) => {
 
             // Получаем данные пользователя
             const userData = await getCurrentUser();
-            console.log('Данные пользователя:', userData);
+            console.log('User data:', userData);
 
-            // Пытаемся получить роль пользователя по username
+            // Пытаемся получить роль пользователя по email
             try {
-                const roleData = await getUserRole(username); // Используем username вместо id
+                const roleData = await getUserRole(email); // Используем email вместо id
                 console.log('Роль пользователя:', roleData);
                 
                 // Проверяем роль пользователя
@@ -49,7 +49,7 @@ const Login = ({ onLogin }) => {
             
             setSuccess(true);
             setErrorMessage('');
-            setUsername('');
+            setEmail('');
             setPassword('');
             
             // Перенаправляем в зависимости от роли
@@ -61,7 +61,7 @@ const Login = ({ onLogin }) => {
                 }
             }, 2000);
         } catch (err) {
-            console.error('Ошибка при входе:', err);
+            console.error('Login error:', err);
             setSuccess(false);
             setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
         }
@@ -71,30 +71,34 @@ const Login = ({ onLogin }) => {
         <div className="auth-form">
             {success ? (
                 <div className="success-message">
-                    <h2>Вошли успешно! ✅</h2>
-                    <p>Перенаправляем на другую страницу...</p>
+                    <h2>Вход выполнен успешно! ✅</h2>
+                    <p>Перенаправляем на главную страницу...</p>
                     <div className="spinner"></div>
                 </div>
             ) : (
                 <>
-                    <h1>Войти</h1>
-                    <input
-                        type="text"
-                        placeholder="Имя"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                    />
-                    <input
-                        type="password"
-                        placeholder="Пароль"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <button onClick={handleLogin}>Login</button>
-                    {errorMessage && <div className="error-message">{errorMessage}</div>}
-                    <div className="auth-links">
-                        Нет аккаунта? <Link to="/register">Так зарегай</Link>
-                    </div>
+                    <h1>Вход в систему</h1>
+                    <form onSubmit={handleLogin}>
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                        <input
+                            type="password"
+                            placeholder="Пароль"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                        <button type="submit">Войти</button>
+                        {errorMessage && <div className="error-message">{errorMessage}</div>}
+                        <div className="auth-links">
+                            Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+                        </div>
+                    </form>
                 </>
             )}
         </div>
