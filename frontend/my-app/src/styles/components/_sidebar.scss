@@ -1,6 +1,5 @@
 .layout {
   display: flex;
-  min-height: 100vh;
   background-color: #fff;
   position: relative;
   width: 100%;
@@ -11,7 +10,6 @@
   padding: 24px;
   transition: all 0.3s ease-in-out;
   background-color: #fff;
-  min-height: 100vh;
   box-sizing: border-box;
   margin-left: 240px;
 }
@@ -26,7 +24,15 @@
     height: 100vh;
     overflow-x: hidden;
     z-index: 1200;
-    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+    transition: width 0.3s ease-in-out !important;
+    background-color: #fff !important;
+    border-right: 1px solid #e0e0e0 !important;
+  }
+
+  &.collapsed {
+    .MuiDrawer-paper {
+      width: 64px !important;
+    }
   }
 
   .MuiListItem-root {
@@ -43,6 +49,7 @@
   .MuiListItemIcon-root {
     color: #666;
     transition: color 0.2s ease-in-out;
+    min-width: 40px !important;
   }
 
   .Mui-selected {
@@ -103,18 +110,13 @@
 
   .sidebar {
     .MuiDrawer-paper {
-      transform: translateX(-100%);
       width: 240px !important;
-
-      &.MuiDrawer-paperAnchorLeft {
-        transform: translateX(0);
-      }
     }
-  }
 
-  .sidebar.collapsed {
-    .MuiDrawer-paper {
-      transform: translateX(-100%);
+    &.collapsed {
+      .MuiDrawer-paper {
+        transform: translateX(-100%) !important;
+      }
     }
   }
 }
