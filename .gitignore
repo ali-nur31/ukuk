@@ -88,3 +88,5 @@ frontend/*.log
 frontend/*.sqlite
 frontend/*.sqlite3
 frontend/*.db 
+
+ai_service/venv/
