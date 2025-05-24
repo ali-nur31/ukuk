@@ -16,7 +16,7 @@ import {
   ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 
-const ChatHistory = ({ chats, onChatSelect, selectedChatId }) => {
+const AiChatHistory = ({ chats, onChatSelect, selectedChatId }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const toggleExpand = () => {
@@ -107,4 +107,4 @@ const ChatHistory = ({ chats, onChatSelect, selectedChatId }) => {
   );
 };
 
-export default ChatHistory; 
+export default AiChatHistory; 

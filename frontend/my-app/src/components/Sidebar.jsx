@@ -26,7 +26,7 @@ import {
   Logout as LogoutIcon,
   PersonAdd as RegisterIcon
 } from '@mui/icons-material';
-import ChatHistory from './ChatHistory';
+import ChatHistory from './AiChatHistory';
 import '../styles/components/_sidebar.scss';
 
 const menuItems = [

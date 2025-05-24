@@ -95,12 +95,22 @@ const Chat = () => {
       setMessages(sortedMessages);
       
       // Пометить сообщения как прочитанные
-      await axios.put(`${API_URL}/chat/read/${contactId}`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setUnread(prev => ({ ...prev, [contactId]: 0 }));
-      // Сообщить через сокет
-      socketRef.current.emit('mark_read', { senderId: contactId, receiverId: user.user.id });
+      if (sortedMessages.length > 0) {
+        try {
+          await axios.put(`${API_URL}/chat/read/${contactId}`, {}, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          setUnread(prev => ({ ...prev, [contactId]: 0 }));
+          // Сообщить через сокет
+          socketRef.current?.emit('mark_read', { 
+            senderId: contactId, 
+            receiverId: user.user.id,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Error marking messages as read:', error);
+        }
+      }
     } catch (e) {
       console.error('Error fetching messages:', e);
       setMessages([]);
@@ -145,10 +155,11 @@ const Chat = () => {
       setNewMessage('');
       
       // WebSocket отправка (для real-time)
-      socketRef.current.emit('send_message', {
+      socketRef.current?.emit('send_message', {
         senderId: user.user.id,
         receiverId: selectedContact.id,
-        content: newMessage.trim()
+        content: newMessage.trim(),
+        timestamp: new Date().toISOString()
       });
     } catch (e) {
       console.error('Error sending message:', e);
@@ -172,18 +183,34 @@ const Chat = () => {
           const newMessages = [...prev, msg];
           return newMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         });
+        // Если сообщение получено в активном чате, сразу помечаем как прочитанное
+        if (msg.senderId === selectedContact.id) {
+          socketRef.current?.emit('mark_read', { 
+            senderId: msg.senderId, 
+            receiverId: user.user.id,
+            timestamp: new Date().toISOString()
+          });
+          setUnread(prev => ({ ...prev, [msg.senderId]: 0 }));
+        }
+      } else {
+        // Обновить непрочитанные для других чатов
+        setUnread(prev => ({ ...prev, [msg.senderId]: (prev[msg.senderId] || 0) + 1 }));
       }
-      // Обновить непрочитанные
-      setUnread(prev => ({ ...prev, [msg.senderId]: (prev[msg.senderId] || 0) + 1 }));
     });
     
-    socketRef.current.on('messages_read', ({ receiverId }) => {
+    socketRef.current.on('messages_read', ({ senderId, timestamp }) => {
       // Обнуляем счетчик для этого контакта
-      setUnread(prev => ({ ...prev, [receiverId]: 0 }));
+      setUnread(prev => ({ ...prev, [senderId]: 0 }));
+      // Обновляем статус прочтения в сообщениях
+      setMessages(prev => prev.map(msg => 
+        msg.senderId === senderId && new Date(msg.createdAt) <= new Date(timestamp)
+          ? { ...msg, isRead: true }
+          : msg
+      ));
     });
     
     return () => {
-      socketRef.current.disconnect();
+      socketRef.current?.disconnect();
     };
   }, [user, selectedContact]);
 
@@ -283,6 +310,11 @@ const Chat = () => {
                                                 : 'Колдонуучу')}
                                         {' • '}
                                         {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        {user && user.user && msg.senderId === user.user.id && (
+                                            <span style={{ marginLeft: 4, color: msg.isRead ? '#4caf50' : '#999' }}>
+                                                {msg.isRead ? '✓✓' : '✓'}
+                                            </span>
+                                        )}
                                     </div>
                                     <div style={{
                                         display: 'inline-block',

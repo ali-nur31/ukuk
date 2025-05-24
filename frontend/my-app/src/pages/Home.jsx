@@ -217,14 +217,15 @@ const Home = () => {
                     }}
                     onSubmit={handleSubmit}
                 >
-                    <input
-                        type="text"
+                    <textarea
                         value={input}
                         onChange={e => setInput(e.target.value)}
-                        placeholder="Бир нерсе сураңыз..."
+                        placeholder={!isAuthenticated && freeQueriesLeft <= 0 ? 
+                            "Акысыз суроолор бүттү. Сураныч, катталыңыз же системага кириңиз." : 
+                            "Бир нерсе сураңыз..."}
                         style={{
                             width: '100%',
-                            maxWidth: 480,
+                            maxWidth: 700,
                             padding: '16px 20px',
                             borderRadius: 18,
                             border: '1px solid #e0e0e0',
@@ -232,13 +233,26 @@ const Home = () => {
                             background: '#f5f6fa',
                             color: '#222',
                             outline: 'none',
-                            marginRight: 12
+                            marginRight: 12,
+                            opacity: (!isAuthenticated && freeQueriesLeft <= 0) ? 0.7 : 1,
+                            resize: 'none',
+                            minHeight: '48px',
+                            maxHeight: '120px',
+                            overflowY: 'hidden',
+                            lineHeight: '1.5'
                         }}
-                        disabled={isLoading}
+                        disabled={isLoading || (!isAuthenticated && freeQueriesLeft <= 0)}
+                        rows={1}
+                        onInput={(e) => {
+                            e.target.style.height = 'auto';
+                            const newHeight = Math.min(e.target.scrollHeight, 120);
+                            e.target.style.height = newHeight + 'px';
+                            e.target.style.overflowY = e.target.scrollHeight > 120 ? 'auto' : 'hidden';
+                        }}
                     />
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || (!isAuthenticated && freeQueriesLeft <= 0)}
                         style={{
                             background: '#1976d2',
                             color: '#fff',
@@ -248,9 +262,9 @@ const Home = () => {
                             fontWeight: 500,
                             fontSize: '1.08rem',
                             height: 48,
-                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            cursor: (isLoading || (!isAuthenticated && freeQueriesLeft <= 0)) ? 'not-allowed' : 'pointer',
                             transition: 'background 0.18s',
-                            opacity: isLoading ? 0.7 : 1
+                            opacity: (isLoading || (!isAuthenticated && freeQueriesLeft <= 0)) ? 0.7 : 1
                         }}
                     >
                         {isLoading ? 'Жөнөтүлүүдө...' : 'Жөнөтүү'}
