@@ -1,6 +1,8 @@
 const chatService = require('../services/chat.service');
 const { Message, User } = require('../models');
 const { Op } = require('sequelize');
+const aiService = require('../services/ai.service');
+const { saveChatHistory } = require('../services/googleDrive.service');
 
 // Получить историю чата
 exports.getChatHistory = async (req, res) => {
@@ -106,4 +108,31 @@ exports.markMessagesAsRead = async (req, res) => {
     console.error('Error marking messages as read:', error);
     res.status(500).json({ message: 'Error marking messages as read' });
   }
-}; 
+};
+
+class ChatController {
+    async query(req, res) {
+        try {
+            const { question } = req.body;
+            const userId = req.user.id;
+
+            if (!question) {
+                return res.status(400).json({ error: 'Question is required' });
+            }
+
+            // Получаем ответ от AI сервиса
+            const answer = await aiService.getAnswer(question);
+
+            // Сохраняем историю в Google Drive
+            await saveChatHistory(userId, question, answer);
+
+            // Отправляем ответ клиенту
+            res.json({ answer });
+        } catch (error) {
+            console.error('Error in chat query:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+}
+
+module.exports = new ChatController(); 

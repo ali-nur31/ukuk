@@ -1,0 +1,35 @@
+{
+  "info": {
+    "name": "AI Service API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Запрос к AI сервису",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"question\": \"Кылмыш-жаза кодексиндеги кылмыштын жалпы түшүнүгү кандай?\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/query",
+          "host": ["{{base_url}}"],
+          "path": ["query"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5001"
+    }
+  ]
+} 

@@ -15,4 +15,7 @@ router.get('/unread', protect, chatController.getUnreadMessages);
 // Отметить сообщения как прочитанные
 router.put('/read/:senderId', protect, chatController.markMessagesAsRead);
 
+// Эндпоинт для отправки вопроса AI
+router.post('/query', protect, chatController.query);
+
 module.exports = router; 

@@ -158,9 +158,79 @@ const deleteProfessionalFolder = async (professionalId) => {
   }
 };
 
+// Сохранение истории чата в Google Drive
+const saveChatHistory = async (userId, question, answer) => {
+  try {
+    // Создаем или получаем папку для истории чата пользователя
+    const folderName = `chat_history_${userId}`;
+    let folderId = await getOrCreateChatFolder(folderName);
+
+    const fileMetadata = {
+      name: `chat_${Date.now()}.json`,
+      parents: [folderId],
+      mimeType: 'application/json',
+    };
+
+    const chatData = {
+      timestamp: new Date().toISOString(),
+      question,
+      answer
+    };
+
+    const media = {
+      mimeType: 'application/json',
+      body: JSON.stringify(chatData, null, 2),
+    };
+
+    const file = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id',
+    });
+
+    return file.data.id;
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+    throw new Error('Failed to save chat history to Google Drive');
+  }
+};
+
+// Получение или создание папки для истории чата
+const getOrCreateChatFolder = async (folderName) => {
+  try {
+    // Ищем папку
+    const response = await drive.files.list({
+      q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID}' in parents and trashed=false`,
+      fields: 'files(id, name)',
+    });
+
+    if (response.data.files.length > 0) {
+      return response.data.files[0].id;
+    }
+
+    // Если папка не найдена, создаем новую
+    const folderMetadata = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID],
+    };
+
+    const folder = await drive.files.create({
+      resource: folderMetadata,
+      fields: 'id',
+    });
+
+    return folder.data.id;
+  } catch (error) {
+    console.error('Error finding/creating chat folder:', error);
+    throw new Error('Failed to find or create chat folder in Google Drive');
+  }
+};
+
 module.exports = {
   upload,
   uploadToGoogleDrive,
   deleteFromGoogleDrive,
   deleteProfessionalFolder,
+  saveChatHistory,
 }; 
