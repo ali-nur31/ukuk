@@ -55,4 +55,36 @@ public/uploads/
 # Cache
 .cache/
 .npm/
-.eslintcache 
+.eslintcache
+
+# Backend
+backend/node_modules/
+backend/logs/
+backend/tmp/
+backend/temp/
+backend/.env
+backend/.env.*
+backend/dist/
+backend/build/
+backend/coverage/
+backend/.nyc_output/
+backend/*.log
+backend/*.sqlite
+backend/*.sqlite3
+backend/*.db
+
+# Frontend
+frontend/node_modules/
+frontend/logs/
+frontend/tmp/
+frontend/temp/
+frontend/.env
+frontend/.env.*
+frontend/dist/
+frontend/build/
+frontend/coverage/
+frontend/.nyc_output/
+frontend/*.log
+frontend/*.sqlite
+frontend/*.sqlite3
+frontend/*.db 

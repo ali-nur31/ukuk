@@ -253,87 +253,18 @@ exports.createProfessionalProfile = async (req, res) => {
 // Обновить профиль профессионала
 exports.updateProfessionalProfile = async (req, res) => {
   try {
-    const { id } = req.params;
-    const {
-      typeId,
-      experience,
-      education,
-      specialization,
-      languages
-    } = req.body;
+    const professional = await Professional.findOne({
+      where: { userId: req.user.id }
+    });
 
-    const professional = await Professional.findByPk(id);
     if (!professional) {
-      return res.status(404).json({ message: 'Professional not found' });
+      return res.status(404).json({ message: 'Professional profile not found' });
     }
 
-    // Проверяем, что пользователь обновляет свой профиль
-    if (professional.userId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to update this profile' });
-    }
+    // Обновляем данные профиля
+    await professional.update(req.body);
 
-    // Если меняется тип профессионала, проверяем его существование
-    if (typeId && typeId !== professional.typeId) {
-      const professionalType = await ProfessionalType.findByPk(typeId);
-      if (!professionalType) {
-        return res.status(400).json({ message: 'Invalid professional type' });
-      }
-      await professional.update({ typeId });
-    }
-
-    // Обновляем детали
-    const details = await ProfessionalDetails.findOne({
-      where: { professionalId: id }
-    });
-
-    if (details) {
-      let profilePhoto = details.profilePhoto;
-
-      // Если загружено новое фото
-      if (req.file) {
-        // Если было старое фото, удаляем его из Google Drive
-        if (profilePhoto) {
-          const oldFileId = profilePhoto.split('/').pop();
-          await deleteFromGoogleDrive(oldFileId);
-        }
-
-        // Получаем данные пользователя для имени папки
-        const user = await User.findByPk(professional.userId);
-        const professionalName = `${user.firstName}_${user.lastName}`.replace(/\s+/g, '_');
-        
-        // Загружаем новое фото
-        profilePhoto = await uploadToGoogleDrive(req.file, professional.id, professionalName);
-      }
-
-      await details.update({
-        experience,
-        education,
-        specialization,
-        languages,
-        profilePhoto
-      });
-    }
-
-    // Получаем обновленную информацию
-    const updatedProfessional = await Professional.findByPk(id, {
-      include: [
-        {
-          model: ProfessionalDetails,
-          as: 'details'
-        },
-        {
-          model: ProfessionalType,
-          as: 'type'
-        },
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'email', 'firstName', 'lastName', 'phone']
-        }
-      ]
-    });
-
-    res.json(updatedProfessional);
+    res.json({ message: 'Professional profile updated successfully', professional });
   } catch (error) {
     console.error('Error updating professional profile:', error);
     res.status(500).json({ message: 'Error updating professional profile' });
@@ -343,24 +274,20 @@ exports.updateProfessionalProfile = async (req, res) => {
 // Удалить профиль профессионала
 exports.deleteProfessionalProfile = async (req, res) => {
   try {
-    const { id } = req.params;
+    const professional = await Professional.findOne({
+      where: { userId: req.user.id }
+    });
 
-    const professional = await Professional.findByPk(id);
     if (!professional) {
-      return res.status(404).json({ message: 'Professional not found' });
-    }
-
-    // Проверяем, что пользователь удаляет свой профиль
-    if (professional.userId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to delete this profile' });
+      return res.status(404).json({ message: 'Professional profile not found' });
     }
 
     // Удаляем папку профессионала и все файлы в ней
-    await deleteProfessionalFolder(id);
+    await deleteProfessionalFolder(professional.id);
 
     // Удаляем детали профессионала
     await ProfessionalDetails.destroy({
-      where: { professionalId: id }
+      where: { professionalId: professional.id }
     });
 
     // Удаляем запись профессионала

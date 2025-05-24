@@ -29,8 +29,14 @@ exports.registerUser = async (req, res) => {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Хешируем пароль
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Проверяем, был ли пользователь мягко удален
+    const softDeletedUser = await User.findOne({
+      where: {
+        email,
+        deletedAt: { [Op.ne]: null }
+      },
+      paranoid: false
+    });
 
     if (softDeletedUser) {
       // Восстанавливаем пользователя
@@ -61,6 +67,9 @@ exports.registerUser = async (req, res) => {
         }
       });
     }
+
+    // Хешируем пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Создаем нового пользователя
     const user = await User.create({

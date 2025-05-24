@@ -17,14 +17,14 @@ router.post('/',
   professionalController.createProfessionalProfile
 );
 
-router.put('/:id',
+router.put('/profile',
   protect,
   checkRole('professional'),
   upload.single('profilePhoto'),
   professionalController.updateProfessionalProfile
 );
 
-router.delete('/:id',
+router.delete('/profile',
   protect,
   checkRole('professional'),
   professionalController.deleteProfessionalProfile
