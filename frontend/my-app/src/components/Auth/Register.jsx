@@ -30,7 +30,6 @@ const Register = () => {
             linkedin: ''
         }
     });
-    const [success, setSuccess] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const navigate = useNavigate();
 
@@ -40,7 +39,9 @@ const Register = () => {
     useEffect(() => {
         const fetchProfessionalTypes = async () => {
             try {
+                console.log('Fetching professional types...');
                 const types = await getProfessionalTypes();
+                console.log('Received professional types:', types);
                 setProfessionalTypes(types);
             } catch (error) {
                 console.error('Error fetching professional types:', error);
@@ -49,6 +50,7 @@ const Register = () => {
         };
 
         if (formType === 'professional') {
+            console.log('Form type is professional, fetching types...');
             fetchProfessionalTypes();
         }
     }, [formType]);
@@ -109,15 +111,16 @@ const Register = () => {
         }
 
         try {
+            let response;
             if (formType === 'user') {
-                await registerUser({
+                response = await registerUser({
                     email: formData.email,
                     password: formData.password,
                     firstName: formData.firstName,
                     lastName: formData.lastName
                 });
             } else {
-                await registerProfessional({
+                response = await registerProfessional({
                     ...formData,
                     experience: Number(formData.experience),
                     hourlyRate: Number(formData.hourlyRate),
@@ -125,11 +128,20 @@ const Register = () => {
                     specializations: formData.specializations.filter(spec => spec.trim() !== '')
                 });
             }
-            setSuccess(true);
-            setErrorMessage('');
-            setTimeout(() => navigate('/login'), 2000);
+
+            // Save token and user data
+            if (response.token) {
+                localStorage.setItem('accessToken', response.token);
+                // Store user data if needed
+                if (response.user) {
+                    localStorage.setItem('user', JSON.stringify(response.user));
+                }
+                // Redirect to home page
+                navigate('/');
+            } else {
+                setErrorMessage('Registration successful but no token received');
+            }
         } catch (error) {
-            setSuccess(false);
             setErrorMessage(error.message || 'Registration failed. Please try again.');
         }
     };
@@ -394,58 +406,51 @@ const Register = () => {
 
     return (
         <div className="auth-form">
-            {success ? (
-                <div className="success-message">
-                    <h2>Регистрация прошла успешно! 🎉</h2>
-                    <p>Вы теперь можете <Link to="/login">войти</Link> в свой аккаунт.</p>
+            <h1>Создать аккаунт</h1>
+            <div className="form-type-toggle">
+                <button
+                    type="button"
+                    className={formType === 'user' ? 'active' : ''}
+                    onClick={() => {
+                        setFormType('user');
+                        setCurrentStep(1);
+                    }}
+                >
+                    Пользователь
+                </button>
+                <button
+                    type="button"
+                    className={formType === 'professional' ? 'active' : ''}
+                    onClick={() => {
+                        setFormType('professional');
+                        setCurrentStep(1);
+                    }}
+                >
+                    Профессионал
+                </button>
+            </div>
+
+            {renderStepIndicator()}
+
+            <form onSubmit={handleSubmit}>
+                {renderStepContent()}
+
+                <div className="form-navigation">
+                    {formType === 'professional' && currentStep > 1 && (
+                        <button type="button" onClick={prevStep} className="prev-btn">
+                            Назад
+                        </button>
+                    )}
+                    <button type="submit" className="submit-btn">
+                        {formType === 'professional' && currentStep < totalSteps ? 'Далее' : 'Зарегистрироваться'}
+                    </button>
                 </div>
-            ) : (
-                <>
-                    <h1>Создать аккаунт</h1>
-                    <div className="form-type-toggle">
-                        <button
-                            className={formType === 'user' ? 'active' : ''}
-                            onClick={() => {
-                                setFormType('user');
-                                setCurrentStep(1);
-                            }}
-                        >
-                            Пользователь
-                        </button>
-                        <button
-                            className={formType === 'professional' ? 'active' : ''}
-                            onClick={() => {
-                                setFormType('professional');
-                                setCurrentStep(1);
-                            }}
-                        >
-                            Профессионал
-                        </button>
-                    </div>
+            </form>
 
-                    {renderStepIndicator()}
-
-                    <form onSubmit={handleSubmit}>
-                        {renderStepContent()}
-
-                        <div className="form-navigation">
-                            {formType === 'professional' && currentStep > 1 && (
-                                <button type="button" onClick={prevStep} className="prev-btn">
-                                    Назад
-                                </button>
-                            )}
-                            <button type="submit" className="submit-btn">
-                                {formType === 'professional' && currentStep < totalSteps ? 'Далее' : 'Зарегистрироваться'}
-                            </button>
-                        </div>
-                    </form>
-
-                    {errorMessage && <div className="error-message">{errorMessage}</div>}
-                    <div className="auth-links">
-                        Уже есть аккаунт? <Link to="/login">Войти</Link>
-                    </div>
-                </>
-            )}
+            {errorMessage && <div className="error-message">{errorMessage}</div>}
+            <div className="auth-links">
+                Уже есть аккаунт? <Link to="/login">Войти</Link>
+            </div>
         </div>
     );
 };

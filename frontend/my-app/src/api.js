@@ -91,9 +91,29 @@ export const loginUser = async (email, password) => {
 
 export const getCurrentUser = async () => {
     try {
+        console.log('Getting current user...');
+        console.log('Access token:', localStorage.getItem('accessToken'));
+        
         const response = await api.get('/auth/me');
-        return response.data;
+        console.log('Response from /auth/me:', response.data);
+        
+        // Backend returns { user: {...}, professional: {...} }
+        const userData = response.data.user || response.data;
+        console.log('Processed user data:', userData);
+        
+        return userData;
     } catch (error) {
+        console.error('Error in getCurrentUser:', error);
+        console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
+        
+        if (error.response?.status === 401) {
+            console.log('Authentication error, clearing tokens...');
+            // Clear tokens on authentication error
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+        }
         throw new Error(error.response?.data?.message || 'Failed to fetch user data');
     }
 };

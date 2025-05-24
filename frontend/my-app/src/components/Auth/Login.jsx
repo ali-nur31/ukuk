@@ -17,6 +17,8 @@ const Login = ({ onLogin }) => {
 
         try {
             const response = await loginUser(email, password);
+            // Store user data
+            localStorage.setItem('user', JSON.stringify(response.user));
             onLogin(response.user);
             navigate('/');
         } catch (error) {

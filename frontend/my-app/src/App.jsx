@@ -44,10 +44,13 @@ function App() {
       try {
         const userData = await getCurrentUser();
         setUser(userData);
+        // Store user data in localStorage for quick access
+        localStorage.setItem('user', JSON.stringify(userData));
       } catch (error) {
         console.error('Error fetching user:', error);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         setUser(null);
       } finally {
         setLoading(false);
@@ -60,6 +63,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
