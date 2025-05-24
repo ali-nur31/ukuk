@@ -14,18 +14,18 @@ const Navbar = ({ user, onLogout }) => {
     return (
         <nav className="navbar">
             <div className="navbar__links">
-                {!user && <Link to="/login" className="nav-link">Login</Link>}
-                {!user && <Link to="/register" className="nav-link">Register</Link>}
-                {user && <Link to="/account" className="nav-link">Account</Link>}
-                {user?.role?.name === 'ROLE_ADMIN' &&
-                    <Link to="/admin" className="nav-link">Admin</Link>}
+                {!user && <Link to="/login" className="nav-link">Войти</Link>}
+                {!user && <Link to="/register" className="nav-link">Регистрация</Link>}
+                {user && <Link to="/account" className="nav-link">Личный кабинет</Link>}
+                <Link to="/news" className="nav-link">Новости</Link>
+                <Link to="/specialists" className="nav-link">Специалисты</Link>
             </div>
 
             {user && (
                 <div className="navbar__user">
-                    <span className="user-greeting">Hello, {user.username}</span>
+                    <span className="user-greeting">Привет, {user.username}</span>
                     <button onClick={handleLogout} className="logout-btn">
-                        Logout
+                        Выйти
                     </button>
                 </div>
             )}

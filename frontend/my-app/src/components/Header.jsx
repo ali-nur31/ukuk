@@ -1,27 +1,20 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import '../styles/components/_header.scss';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { logout } from '../api';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 const menuItems = [
-  
-  { label: 'Ваш Счет', path: '/account' },
-  { label: 'Кредит', path: '/loan' },
   { label: 'Новости', path: '/news' },
+  { label: 'Специалисты', path: '/specialists' },
+  { label: 'Личный кабинет', path: '/account' },
 ];
 
 const Header = ({ user, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    console.log('Header получил данные пользователя:', user);
-    console.log('Роль пользователя в Header:', user?.role);
-  }, [user]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -37,52 +30,50 @@ const Header = ({ user, onLogout }) => {
     }
   };
 
-  const handleAdminPanel = () => {
-    navigate('/admin');
-  };
-
   return (
-    <header className="custom-header">
-      <div className="header__logo">
-        <Link to="/" className="header__logo">
-          <span className="logo-text">Shah Bank</span>
-        </Link>
-      </div>
-      <nav className="header__menu">
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`header__menu-link${location.pathname === item.path ? ' active' : ''}`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <div className="header__actions">
-        {user ? (
-          <>
-            <span className="header__username">{user.username}</span>
-            {user.isAdmin && (
-              <Button
-                color="inherit"
-                startIcon={<AdminPanelSettingsIcon />}
-                onClick={handleAdminPanel}
-              >
-                Admin Panel
+    <AppBar position="static" className="header">
+      <Toolbar>
+        <Typography variant="h6" component={Link} to="/" sx={{ textDecoration: 'none', color: 'inherit', flexGrow: 1 }}>
+          Law.AI
+        </Typography>
+        
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2 }}>
+          {menuItems.map((item) => (
+            <Button
+              key={item.path}
+              component={Link}
+              to={item.path}
+              color="inherit"
+              sx={{
+                textTransform: 'none',
+                fontWeight: location.pathname === item.path ? 'bold' : 'normal'
+              }}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 2, ml: 2 }}>
+          {user ? (
+            <>
+              <Button color="inherit" onClick={handleLogout}>
+                Выйти
               </Button>
-            )}
-            <button className="header__btn header__btn--logout" onClick={handleLogout}>
-              Выйти
-            </button>
-          </>
-        ) : (
-          <button className="header__btn header__btn--login" onClick={() => navigate('/login')}>
-            Войти
-          </button>
-        )}
-      </div>
-    </header>
+            </>
+          ) : (
+            <>
+              <Button color="inherit" component={Link} to="/login">
+                Войти
+              </Button>
+              <Button color="inherit" component={Link} to="/register">
+                Регистрация
+              </Button>
+            </>
+          )}
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 };
 

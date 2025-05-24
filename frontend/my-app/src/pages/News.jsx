@@ -25,10 +25,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 
-const News = ({ user }) => {
+const News = () => {
     const navigate = useNavigate();
     const [news, setNews] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [openDialog, setOpenDialog] = useState(false);
     const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
     const [selectedNews, setSelectedNews] = useState(null);
@@ -43,35 +44,20 @@ const News = ({ user }) => {
         message: '',
         severity: 'success'
     });
-    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         loadNews();
-        const checkAdminRole = async () => {
-            if (user) {
-                try {
-                    const roleData = await getUserRole(user.username);
-                    setIsAdmin(roleData.name === 'ROLE_ADMIN');
-                } catch (error) {
-                    console.error('Ошибка при проверке роли:', error);
-                    setIsAdmin(false);
-                }
-            }
-        };
-        checkAdminRole();
     }, []);
 
     const loadNews = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/news/preview');
-            const sortedNews = response.data.sort((a, b) => 
-                new Date(b.publicationDate) - new Date(a.publicationDate)
-            );
-            setNews(sortedNews);
+            const response = await api.get('/news');
+            setNews(response.data);
+            setError(null);
         } catch (error) {
-            console.error('Failed to load news:', error);
-            showSnackbar('Failed to load news', 'error');
+            console.error('Error loading news:', error);
+            setError('Не удалось загрузить новости');
         } finally {
             setLoading(false);
         }
@@ -167,84 +153,63 @@ const News = ({ user }) => {
 
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
                 <CircularProgress />
             </Box>
         );
     }
 
-    return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-                <Typography variant="h4" component="h1">
-                    News
+    if (error) {
+        return (
+            <Container>
+                <Typography color="error" sx={{ mt: 4, textAlign: 'center' }}>
+                    {error}
                 </Typography>
-                {isAdmin && (
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => handleOpenDialog()}
-                    >
-                        Add News
-                    </Button>
-                )}
-            </Box>
+            </Container>
+        );
+    }
 
+    return (
+        <Container sx={{ py: 4 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+                Новости
+            </Typography>
+            
             <Grid container spacing={3}>
-                {news.map((newsItem) => (
-                    <Grid item xs={12} md={6} lg={4} key={newsItem.id}>
-                        <Card>
-                            {newsItem.imageUrl && (
+                {news.map((item) => (
+                    <Grid item xs={12} md={6} lg={4} key={item.id}>
+                        <Card 
+                            sx={{ 
+                                height: '100%', 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    boxShadow: 6
+                                }
+                            }}
+                            onClick={() => navigate(`/news/${item.id}`)}
+                        >
+                            {item.imageUrl && (
                                 <CardMedia
                                     component="img"
                                     height="200"
-                                    image={newsItem.imageUrl}
-                                    alt={newsItem.title}
+                                    image={item.imageUrl}
+                                    alt={item.title}
                                 />
                             )}
-                            <CardContent>
-                                <Typography variant="h6" component="h2">
-                                    {newsItem.title}
+                            <CardContent sx={{ flexGrow: 1 }}>
+                                <Typography gutterBottom variant="h5" component="h2">
+                                    {item.title}
                                 </Typography>
-                                <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{ mt: 1 }}
-                                >
-                                    {newsItem.content}
+                                <Typography>
+                                    {item.content.length > 150 
+                                        ? `${item.content.substring(0, 150)}...` 
+                                        : item.content}
                                 </Typography>
-                                <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{ mt: 2, display: 'block' }}
-                                >
-                                    {new Date(newsItem.publicationDate).toLocaleDateString()}
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+                                    {new Date(item.createdAt).toLocaleDateString()}
                                 </Typography>
-                                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={() => navigate(`/news/${newsItem.id}`)}
-                                    >
-                                        Подробнее
-                                    </Button>
-                                    {isAdmin && (
-                                        <>
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => handleOpenDialog(newsItem)}
-                                            >
-                                                <EditIcon />
-                                            </IconButton>
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => handleDelete(newsItem.id)}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </>
-                                    )}
-                                </Box>
                             </CardContent>
                         </Card>
                     </Grid>

@@ -17,7 +17,8 @@ import {
     searchUsers,
     blockUserTemporary,
     blockUserPermanent,
-    unblockUser
+    unblockUser,
+    blockUser
 } from '../api';
 import {
     Box,
@@ -49,7 +50,8 @@ import {
     CircularProgress,
     Checkbox,
     FormControlLabel,
-    Divider
+    Divider,
+    Chip
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -271,31 +273,6 @@ const Admin = () => {
         setOpenDeleteDialog(true);
     };
 
-    const confirmDeleteUser = async () => {
-        try {
-            setLoading(true);
-
-            if (!userToDelete) {
-                setError('Пользователь не выбран');
-                return;
-            }
-
-            await deleteUser(userToDelete.id);
-
-            setSuccess(`Пользователь ${userToDelete.username} успешно удален`);
-            setOpenDeleteDialog(false);
-
-            // Обновляем список пользователей
-            await fetchData();
-
-        } catch (err) {
-            setError(err.message || 'Ошибка при удалении пользователя');
-            console.error('Delete error details:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleUpdateVipStatus = async (userId, isVip) => {
         try {
             await updateVipStatus(userId, isVip);
@@ -406,10 +383,8 @@ const Admin = () => {
 
     const handleUpdateBlockStatus = (user) => {
         if (user.isBlocked) {
-            // If user is already blocked, unblock them
             handleUnblockUser(user.id);
         } else {
-            // If user is not blocked, show block dialog
             setUserToBlock(user);
             setBlockType('temporary');
             setBlockDays(7);
@@ -419,39 +394,28 @@ const Admin = () => {
     };
 
     const handleBlockUser = async () => {
+        if (!userToBlock) return;
+
         try {
-            setLoading(true); // Добавляем индикатор загрузки
+            const blockData = {
+                blockType,
+                blockDays: blockType === 'temporary' ? blockDays : undefined,
+                blockReason
+            };
 
-            if (!userToBlock) {
-                setError('Пользователь не выбран');
-                return;
-            }
-
-            let message;
-            if (blockType === 'temporary') {
-                await blockUserTemporary(userToBlock.id, blockDays, blockReason);
-                message = `Пользователь ${userToBlock.username} временно заблокирован на ${blockDays} дней`;
-            } else {
-                await blockUserPermanent(userToBlock.id, blockReason);
-                message = `Пользователь ${userToBlock.username} заблокирован навсегда`;
-            }
-
-            setSuccess(message);
+            await blockUser(userToBlock.id, blockData);
+            setSuccess('Пользователь успешно заблокирован');
             setOpenBlockDialog(false);
-            await fetchData(); // Ждём обновления данных
-
+            fetchData();
         } catch (err) {
             setError(err.message || 'Неизвестная ошибка при блокировке');
-            console.error('Block error details:', err);
-        } finally {
-            setLoading(false);
         }
     };
     
     const handleUnblockUser = async (userId) => {
         try {
             await unblockUser(userId);
-            setSuccess('Пользователь разблокирован успешно');
+            setSuccess('Пользователь успешно разблокирован');
             fetchData();
         } catch (err) {
             setError(err.message || 'Ошибка при разблокировке пользователя');

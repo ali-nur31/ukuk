@@ -35,17 +35,17 @@ api.interceptors.response.use(
 
         if (error.response.status === 401 && !error.config._retry) {
             error.config._retry = true;
-            try {
-                const refreshToken = localStorage.getItem('refreshToken');
+                    try {
+                        const refreshToken = localStorage.getItem('refreshToken');
                 const response = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken });
-                localStorage.setItem('accessToken', response.data.accessToken);
+                        localStorage.setItem('accessToken', response.data.accessToken);
                 error.config.headers.Authorization = `Bearer ${response.data.accessToken}`;
                 return axios(error.config);
-            } catch (refreshError) {
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
-                window.location.href = '/login';
-                return Promise.reject(refreshError);
+                    } catch (refreshError) {
+                        localStorage.removeItem('accessToken');
+                        localStorage.removeItem('refreshToken');
+                        window.location.href = '/login';
+                        return Promise.reject(refreshError);
             }
         }
         return Promise.reject(error);
@@ -53,6 +53,11 @@ api.interceptors.response.use(
 );
 
 // Auth endpoints
+export const logout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+};
+
 export const registerUser = async (userData) => {
     try {
         const response = await api.post('/auth/register/user', userData);

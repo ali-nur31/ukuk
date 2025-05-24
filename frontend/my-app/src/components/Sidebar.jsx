@@ -1,91 +1,260 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  Drawer, 
+  List, 
+  ListItem, 
+  ListItemIcon, 
+  ListItemText, 
+  IconButton, 
+  Divider,
+  Box,
+  Typography,
+  Button,
+  useMediaQuery,
+  useTheme
+} from '@mui/material';
+import {
+  Home as HomeIcon,
+  Article as NewsIcon,
+  People as SpecialistsIcon,
+  Person as AccountIcon,
+  Chat as ChatIcon,
+  Menu as MenuIcon,
+  ChevronLeft as ChevronLeftIcon,
+  Login as LoginIcon,
+  Logout as LogoutIcon,
+  PersonAdd as RegisterIcon
+} from '@mui/icons-material';
 import '../styles/components/_sidebar.scss';
 
-const PEOPLE = [
-  { id: 1, name: 'Иван Иванов' },
-  { id: 2, name: 'Мария Петрова' },
-  { id: 3, name: 'Сергей Смирнов' },
-  { id: 4, name: 'Анна Кузнецова' },
+const menuItems = [
+  { label: 'Главная', path: '/', icon: <HomeIcon /> },
+  { label: 'Новости', path: '/news', icon: <NewsIcon /> },
+  { label: 'Специалисты', path: '/specialists', icon: <SpecialistsIcon /> },
 ];
 
-const CHAT_HISTORY = [
-  { id: 1, title: 'Вопрос по договору' },
-  { id: 2, title: 'Консультация по кредиту' },
-  { id: 3, title: 'Страхование авто' },
+const protectedMenuItems = [
+  { label: 'Личный кабинет', path: '/account', icon: <AccountIcon /> },
+  { label: 'Чат', path: '/chat', icon: <ChatIcon /> },
 ];
 
-const Sidebar = ({ collapsed, setCollapsed }) => {
-  const [peopleOpen, setPeopleOpen] = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(true);
+const Sidebar = ({ user, onLogout, collapsed, setCollapsed }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleChat = (id) => {
-    navigate(`/chat/${id}`);
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [isMobile, setCollapsed]);
+
+  const handleLogout = async () => {
+    try {
+      await onLogout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
-  const handleSpecialistsPage = () => {
-    navigate('/specialists');
+  const toggleSidebar = () => {
+    setCollapsed(!collapsed);
   };
 
-  const handleHome = () => {
-    navigate('/');
+  const handleNavigation = (path) => {
+    navigate(path);
+    if (isMobile) {
+      setCollapsed(true);
+    }
   };
+
+  const drawerVariant = 'temporary';
+  const drawerWidth = collapsed ? 64 : 240;
 
   return (
-    <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
-      <div className="sidebar__logo-row">
-        <div className="sidebar__logo" onClick={handleHome} style={{ cursor: 'pointer' }}>Law.Ai</div>
-        <button className="sidebar__collapse" onClick={() => setCollapsed(true)}>
-          ⮜
-        </button>
-      </div>
-      <button className="sidebar__specialists-btn" onClick={handleSpecialistsPage}>
-        Все специалисты
-      </button>
-      <div className="sidebar__people">
-        <div
-          className="sidebar__section-title sidebar__people-title"
-          onClick={() => setPeopleOpen((v) => !v)}
-          style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+    <Drawer
+      variant={drawerVariant}
+      className={`sidebar ${collapsed ? 'collapsed' : ''}`}
+      open={!collapsed}
+      onClose={() => isMobile && setCollapsed(true)}
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
+          width: drawerWidth,
+          boxSizing: 'border-box',
+          transition: theme.transitions.create(['width', 'transform'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
+          backgroundColor: theme.palette.background.paper,
+          borderRight: `1px solid ${theme.palette.divider}`,
+        },
+      }}
+    >
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: collapsed ? 'center' : 'space-between',
+        padding: '16px',
+        minHeight: '64px'
+      }}>
+        {!collapsed && (
+          <Typography 
+            variant="h6" 
+            component={Link} 
+            to="/" 
+            onClick={() => handleNavigation('/')}
+            sx={{ 
+              textDecoration: 'none', 
+              color: 'inherit',
+              fontWeight: 'bold',
+              letterSpacing: '1px',
+              cursor: 'pointer'
+            }}
+          >
+            Law.AI
+          </Typography>
+        )}
+        <IconButton 
+          onClick={toggleSidebar}
+          sx={{
+            color: theme.palette.text.secondary,
+            '&:hover': {
+              color: theme.palette.primary.main,
+            }
+          }}
         >
-          Чаты с людьми
-          <span style={{ fontSize: 18 }}>{peopleOpen ? '▼' : '▲'}</span>
-        </div>
-        {peopleOpen && (
-          <ul className="sidebar__people-list">
-            {PEOPLE.map(person => (
-              <li
-                key={person.id}
-                className="sidebar__person"
-                onClick={() => handleChat(person.id)}
+          {collapsed ? <MenuIcon /> : <ChevronLeftIcon />}
+        </IconButton>
+      </Box>
+
+      <Divider />
+
+      <List>
+        {menuItems.map((item) => (
+          <ListItem
+            button
+            key={item.path}
+            onClick={() => handleNavigation(item.path)}
+            selected={location.pathname === item.path}
+            sx={{
+              minHeight: 48,
+              justifyContent: collapsed ? 'center' : 'initial',
+              px: 2.5,
+              '&.Mui-selected': {
+                backgroundColor: theme.palette.primary.light + '20',
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.light + '30',
+                },
+              },
+            }}
+          >
+            <ListItemIcon sx={{
+              minWidth: 0,
+              mr: collapsed ? 'auto' : 3,
+              justifyContent: 'center',
+              color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
+            }}>
+              {item.icon}
+            </ListItemIcon>
+            {!collapsed && <ListItemText primary={item.label} />}
+          </ListItem>
+        ))}
+      </List>
+
+      {user && (
+        <>
+          <Divider />
+          <List>
+            {protectedMenuItems.map((item) => (
+              <ListItem
+                button
+                key={item.path}
+                onClick={() => handleNavigation(item.path)}
+                selected={location.pathname === item.path}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'initial',
+                  px: 2.5,
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.primary.light + '20',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.light + '30',
+                    },
+                  },
+                }}
               >
-                {person.name}
-              </li>
+                <ListItemIcon sx={{
+                  minWidth: 0,
+                  mr: collapsed ? 'auto' : 3,
+                  justifyContent: 'center',
+                  color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
+                }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary={item.label} />}
+              </ListItem>
             ))}
-          </ul>
+          </List>
+        </>
+      )}
+
+      <Box sx={{ mt: 'auto', p: 2 }}>
+        {user ? (
+          <Button
+            fullWidth
+            variant="outlined"
+            color="error"
+            onClick={handleLogout}
+            startIcon={!collapsed && <LogoutIcon />}
+            sx={{ 
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              '&:hover': {
+                backgroundColor: theme.palette.error.light + '20'
+              }
+            }}
+          >
+            {!collapsed && 'Выйти'}
+          </Button>
+        ) : (
+          <>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => handleNavigation('/login')}
+              startIcon={!collapsed && <LoginIcon />}
+              sx={{ 
+                mb: 1, 
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.dark
+                }
+              }}
+            >
+              {!collapsed && 'Войти'}
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => handleNavigation('/register')}
+              startIcon={!collapsed && <RegisterIcon />}
+              sx={{ 
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.light + '10'
+                }
+              }}
+            >
+              {!collapsed && 'Регистрация'}
+            </Button>
+          </>
         )}
-      </div>
-      <div className="sidebar__history">
-        <div
-          className="sidebar__section-title sidebar__history-title"
-          onClick={() => setHistoryOpen((v) => !v)}
-          style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          История чатов с AI
-          <span style={{ fontSize: 18 }}>{historyOpen ? '▼' : '▲'}</span>
-        </div>
-        {historyOpen && (
-          <ul className="sidebar__history-list">
-            {CHAT_HISTORY.map(chat => (
-              <li key={chat.id} className="sidebar__history-item">
-                {chat.title}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </aside>
+      </Box>
+    </Drawer>
   );
 };
 

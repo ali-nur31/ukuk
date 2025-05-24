@@ -1,11 +1,181 @@
-.sidebar {
-  min-height: 100vh;
-  height: 100vh;
-  background: #f5f6fa;
+.layout {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.03);
+  min-height: 100vh;
+  background-color: #fff;
+  position: relative;
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  padding: 24px;
+  transition: all 0.3s ease-in-out;
+  background-color: #fff;
+  min-height: 100vh;
+  box-sizing: border-box;
+  margin-left: 240px;
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 64px;
+}
+
+.sidebar {
+  .MuiDrawer-paper {
+    position: fixed;
+    height: 100vh;
+    overflow-x: hidden;
+    z-index: 1200;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+  }
+
+  .MuiListItem-root {
+    border-radius: 8px;
+    margin: 4px 8px;
+    width: auto;
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+  }
+
+  .MuiListItemIcon-root {
+    color: #666;
+    transition: color 0.2s ease-in-out;
+  }
+
+  .Mui-selected {
+    background-color: rgba(52, 152, 219, 0.1) !important;
+    
+    .MuiListItemIcon-root {
+      color: #3498db;
+    }
+
+    &:hover {
+      background-color: rgba(52, 152, 219, 0.15) !important;
+    }
+  }
+
+  .MuiButton-root {
+    text-transform: none;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .MuiDivider-root {
+    margin: 8px 0;
+  }
+}
+
+// Анимации
+.MuiListItemIcon-root,
+.MuiListItemText-root {
+  transition: all 0.2s ease-in-out;
+}
+
+// Стили для кнопок внизу сайдбара
+.sidebar-bottom-buttons {
+  .MuiButton-root {
+    margin: 4px 0;
+  }
+}
+
+// Медиа-запросы для адаптивности
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 20px;
+    margin-left: 64px;
+  }
+
+  .sidebar {
+    .MuiDrawer-paper {
+      width: 240px !important;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 16px;
+    margin-left: 0 !important;
+  }
+
+  .sidebar {
+    .MuiDrawer-paper {
+      transform: translateX(-100%);
+      width: 240px !important;
+
+      &.MuiDrawer-paperAnchorLeft {
+        transform: translateX(0);
+      }
+    }
+  }
+
+  .sidebar.collapsed {
+    .MuiDrawer-paper {
+      transform: translateX(-100%);
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 12px;
+    margin-left: 0 !important;
+  }
+
+  .sidebar {
+    .MuiDrawer-paper {
+      width: 100% !important;
+    }
+
+    .MuiListItem-root {
+      margin: 2px 4px;
+    }
+
+    .MuiButton-root {
+      padding: 8px 12px;
+    }
+  }
+}
+
+// Стили для темной темы (если понадобится)
+@media (prefers-color-scheme: dark) {
+  .sidebar {
+    .MuiDrawer-paper {
+      background-color: #1a1a1a;
+      border-right-color: #333;
+    }
+
+    .MuiListItemIcon-root {
+      color: #999;
+    }
+
+    .Mui-selected {
+      background-color: rgba(52, 152, 219, 0.2) !important;
+      
+      .MuiListItemIcon-root {
+        color: #3498db;
+      }
+    }
+
+    .MuiButton-root {
+      color: #fff;
+    }
+  }
+}
+
+// Стили для печати
+@media print {
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0;
+  }
 }
 
 .sidebar__logo-row {
@@ -112,11 +282,6 @@
   &:hover {
     background: #c0392b;
   }
-}
-
-.layout {
-  min-height: 100vh;
-  height: 100vh;
 }
 
 .sidebar__specialists-list {
