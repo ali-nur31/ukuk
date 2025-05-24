@@ -110,29 +110,26 @@ exports.markMessagesAsRead = async (req, res) => {
   }
 };
 
-class ChatController {
-    async query(req, res) {
-        try {
-            const { question } = req.body;
-            const userId = req.user.id;
+// Эндпоинт для отправки вопроса AI
+exports.query = async (req, res) => {
+  try {
+    const { question } = req.body;
+    const userId = req.user.id;
 
-            if (!question) {
-                return res.status(400).json({ error: 'Question is required' });
-            }
-
-            // Получаем ответ от AI сервиса
-            const answer = await aiService.getAnswer(question);
-
-            // Сохраняем историю в Google Drive
-            await saveChatHistory(userId, question, answer);
-
-            // Отправляем ответ клиенту
-            res.json({ answer });
-        } catch (error) {
-            console.error('Error in chat query:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
+    if (!question) {
+      return res.status(400).json({ error: 'Question is required' });
     }
-}
 
-module.exports = new ChatController(); 
+    // Получаем ответ от AI сервиса
+    const answer = await aiService.getAnswer(question);
+
+    // Сохраняем историю в Google Drive
+    await saveChatHistory(userId, question, answer);
+
+    // Отправляем ответ клиенту
+    res.json({ answer });
+  } catch (error) {
+    console.error('Error in chat query:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}; 
