@@ -1,30 +1,93 @@
-const { User, Professional, ProfessionalDetails } = require('../models');
+const { User } = require('../models');
+const { Professional } = require('../models');
 
-exports.deleteUser = async (req, res) => {
+// Получить всех пользователей
+exports.getUsers = async (req, res) => {
   try {
-    const { id } = req.params;
+    const users = await User.findAll({
+      attributes: { exclude: ['password'] }
+    });
+    res.json(users);
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(500).json({ message: 'Error getting users' });
+  }
+};
 
-    // Проверяем, существует ли пользователь
-    const user = await User.findByPk(id);
+// Получить пользователя по ID
+exports.getUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ['password'] }
+    });
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Проверяем, что пользователь удаляет свой аккаунт или это админ
-    if (user.id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to delete this user' });
+    res.json(user);
+  } catch (error) {
+    console.error('Error getting user:', error);
+    res.status(500).json({ message: 'Error getting user' });
+  }
+};
+
+// Обновить пользователя
+exports.updateUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // Если пользователь является профессионалом, удаляем связанные данные
-    const professional = await Professional.findOne({ where: { userId: id } });
-    if (professional) {
-      // Удаляем детали профессионала
-      await ProfessionalDetails.destroy({
-        where: { professionalId: professional.id }
+    // Проверяем, имеет ли пользователь право обновлять данные
+    if (req.user.id !== user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to update this user' });
+    }
+
+    // Обновляем только разрешенные поля
+    const allowedUpdates = ['firstName', 'lastName', 'phone'];
+    const updates = {};
+    
+    allowedUpdates.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    await user.update(updates);
+    
+    // Получаем обновленного пользователя без пароля
+    const updatedUser = await User.findByPk(user.id, {
+      attributes: { exclude: ['password'] }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Error updating user' });
+  }
+};
+
+// Удалить пользователя
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Если пользователь является профессионалом, удаляем связанные записи
+    if (user.role === 'professional') {
+      const professional = await Professional.findOne({
+        where: { userId: user.id }
       });
 
-      // Удаляем запись профессионала
-      await professional.destroy();
+      if (professional) {
+        await professional.destroy();
+      }
     }
 
     // Удаляем пользователя

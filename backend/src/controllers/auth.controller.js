@@ -7,7 +7,7 @@ const crypto = require('crypto');
 // Регистрация обычного пользователя
 exports.registerUser = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName } = req.body;
 
     // Проверяем наличие обязательных полей
     if (!email || !password || !firstName || !lastName) {
@@ -32,14 +32,44 @@ exports.registerUser = async (req, res) => {
     // Хешируем пароль
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Создаем пользователя
+    if (softDeletedUser) {
+      // Восстанавливаем пользователя
+      await softDeletedUser.restore();
+      // Обновляем пароль и имя
+      await softDeletedUser.update({
+        password,
+        firstName,
+        lastName
+      });
+
+      // Генерируем новый токен
+      const token = jwt.sign(
+        { id: softDeletedUser.id },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      return res.status(200).json({
+        message: 'User account restored successfully',
+        token,
+        user: {
+          id: softDeletedUser.id,
+          email: softDeletedUser.email,
+          firstName: softDeletedUser.firstName,
+          lastName: softDeletedUser.lastName,
+          role: softDeletedUser.role
+        }
+      });
+    }
+
+    // Создаем нового пользователя
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password,
       firstName,
       lastName,
-      phone,
-      isVerified: true // Устанавливаем как верифицированного сразу
+      role: 'user',
+      registrationType: 'regular'
     });
 
     // Генерируем JWT токен
@@ -61,7 +91,7 @@ exports.registerUser = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        phone: user.phone
+        role: user.role
       }
     });
   } catch (error) {
@@ -92,6 +122,10 @@ exports.registerProfessional = async (req, res) => {
       socialLinks
     } = req.body;
 
+    if (!req.body.professionalTypeName) {
+      return res.status(400).json({ message: 'professionalTypeName is required' });
+    }
+
     // Проверяем существование пользователя, включая мягко удаленных
     const existingUser = await User.findOne({
       where: {
@@ -108,7 +142,7 @@ exports.registerProfessional = async (req, res) => {
     }
 
     // Проверяем существование типа профессионала
-    const professionalType = await ProfessionalType.findOne({ where: { name: professionalTypeName } });
+    const professionalType = await ProfessionalType.findOne({ where: { name: req.body.professionalTypeName } });
     if (!professionalType) {
       return res.status(400).json({ message: 'Invalid professional type' });
     }
@@ -137,7 +171,7 @@ exports.registerProfessional = async (req, res) => {
       const [professional] = await Professional.findOrCreate({
         where: { userId: softDeletedUser.id },
         defaults: {
-          professionalTypeId: professionalType.id,
+          typeId: professionalType.id,
           hourlyRate
         }
       });
@@ -199,7 +233,7 @@ exports.registerProfessional = async (req, res) => {
     // Создаем профиль профессионала
     const professional = await Professional.create({
       userId: user.id,
-      professionalTypeId: professionalType.id,
+      typeId: professionalType.id,
       hourlyRate
     });
 

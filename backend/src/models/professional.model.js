@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         as: 'user'
       });
       Professional.belongsTo(models.ProfessionalType, {
-        foreignKey: 'professionalTypeId',
+        foreignKey: 'typeId',
         as: 'professionalType'
       });
       Professional.hasOne(models.ProfessionalDetails, {
@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id'
       }
     },
-    professionalTypeId: {
+    typeId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
