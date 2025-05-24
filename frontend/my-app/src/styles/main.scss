@@ -48,20 +48,18 @@ main {
   display: flex;
   flex-direction: column;
   padding: 24px 16px 16px 16px;
-  transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s;
-  will-change: transform, opacity;
-  position: relative;
-  z-index: 2;
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 1000;
 }
 
 .sidebar--collapsed {
   transform: translateX(-100%);
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
+  position: fixed;
 }
 
 .main-content {
@@ -72,4 +70,79 @@ main {
   background: #fff;
   transition: margin-left 0.35s cubic-bezier(.4,0,.2,1);
   box-sizing: border-box;
+  margin-left: 280px;
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 0;
+}
+
+// Добавляем кнопку для возврата сайдбара
+.sidebar-toggle {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  padding: 8px;
+  cursor: pointer;
+  z-index: 999;
+  transition: left 0.35s cubic-bezier(.4,0,.2,1);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+
+  &:hover {
+    background: #2980b9;
+  }
+
+  &.sidebar-hidden {
+    left: 0;
+  }
+
+  &.sidebar-visible {
+    left: 280px;
+  }
+}
+
+// Глобальные стили для input полей
+input, textarea, select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #fff;
+  border: 2px solid #e0e6ed;
+  border-radius: 8px;
+  color: #2c3e50;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+  }
+
+  &:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  &::placeholder {
+    color: #a0aec0;
+  }
+}
+
+// Исправление для Material-UI компонентов
+.MuiTextField-root {
+  .MuiInputBase-root {
+    background-color: #fff;
+  }
 }
