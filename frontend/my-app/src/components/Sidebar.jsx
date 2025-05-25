@@ -132,7 +132,7 @@ const Sidebar = () => {
                 cursor: 'pointer'
               }}
             >
-              Law.AI
+              UKUK
             </Typography>
           )}
           <IconButton 

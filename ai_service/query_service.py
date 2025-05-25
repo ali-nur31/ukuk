@@ -9,14 +9,14 @@ from numpy.linalg import norm
 app = Flask(__name__)
 CORS(app, resources={
     r"/query": {
-        "origins": ["http://localhost:5173"],
+        "origins": ["http://localhost:5173", "http://localhost:5000"],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "Accept"],
         "supports_credentials": True
     }
 })
 
-genai.configure(api_key="AIzaSyBJVReTlkssEIlnajOyx_1BA486lTJTgYU")
+genai.configure(api_key="AIzaSyAXU3Szq3YZtUHxYHNep9L6GlAYnF7mDsE")
 
 generation_config = {
     "temperature": 0.7,

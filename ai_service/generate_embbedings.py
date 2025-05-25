@@ -4,7 +4,7 @@ from docx import Document
 import google.generativeai as genai
 import os
 
-genai.configure(api_key="AIzaSyBJVReTlkssEIlnajOyx_1BA486lTJTgYU")
+genai.configure(api_key="AIzaSyAXU3Szq3YZtUHxYHNep9L6GlAYnF7mDsE")
 
 def load_and_chunk_docx(path, max_words=150):
     doc = Document(path)
