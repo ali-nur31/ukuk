@@ -34,7 +34,7 @@ const Register = () => {
     });
     const [errorMessage, setErrorMessage] = useState('');
     const navigate = useNavigate();
-    const { register } = useAuth();
+    const { register, login } = useAuth();
 
     const totalSteps = 4;
 
@@ -134,9 +134,7 @@ const Register = () => {
                 });
                 if (response.token) {
                     localStorage.setItem('accessToken', response.token);
-                    if (response.user) {
-                        localStorage.setItem('user', JSON.stringify(response.user));
-                    }
+                    await login({ email: formData.email, password: formData.password });
                     toast.success('Каттоо ийгиликтүү болду!');
                     navigate('/');
                 }
