@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { registerUser, registerProfessional, getProfessionalTypes } from '../../api';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-toastify';
 import '../../styles/components/_auth.scss';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -32,6 +34,7 @@ const Register = () => {
     });
     const [errorMessage, setErrorMessage] = useState('');
     const navigate = useNavigate();
+    const { register } = useAuth();
 
     const totalSteps = 4;
 
@@ -113,12 +116,14 @@ const Register = () => {
         try {
             let response;
             if (formType === 'user') {
-                response = await registerUser({
+                response = await register({
                     email: formData.email,
                     password: formData.password,
                     firstName: formData.firstName,
                     lastName: formData.lastName
                 });
+                toast.success('Каттоо ийгиликтүү болду!');
+                navigate('/');
             } else {
                 response = await registerProfessional({
                     ...formData,
@@ -127,19 +132,18 @@ const Register = () => {
                     languages: formData.languages.filter(lang => lang.trim() !== ''),
                     specializations: formData.specializations.filter(spec => spec.trim() !== '')
                 });
-            }
-
-            if (response.token) {
-                localStorage.setItem('accessToken', response.token);
-                if (response.user) {
-                    localStorage.setItem('user', JSON.stringify(response.user));
+                if (response.token) {
+                    localStorage.setItem('accessToken', response.token);
+                    if (response.user) {
+                        localStorage.setItem('user', JSON.stringify(response.user));
+                    }
+                    toast.success('Каттоо ийгиликтүү болду!');
+                    navigate('/');
                 }
-                navigate('/');
-            } else {
-                setErrorMessage('Каттоо ийгиликтүү болду, бирок токен алынбады');
             }
         } catch (error) {
             setErrorMessage(error.message || 'Каттоо ийгиликсиз болду. Сураныч, кайра аракет кылыңыз.');
+            toast.error(error.message || 'Каттоо ийгиликсиз болду');
         }
     };
 
