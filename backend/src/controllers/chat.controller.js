@@ -2,7 +2,7 @@ const chatService = require('../services/chat.service');
 const { Message, User } = require('../models');
 const { Op } = require('sequelize');
 const aiService = require('../services/ai.service');
-const { saveChatHistory } = require('../services/googleDrive.service');
+const { saveChatHistory, getChatHistory } = require('../services/googleDrive.service');
 
 // Получить историю чата
 exports.getChatHistory = async (req, res) => {
@@ -132,4 +132,19 @@ exports.query = async (req, res) => {
     console.error('Error in chat query:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+};
+
+// Получение истории чата пользователя из Google Drive
+exports.getUserChatHistory = async (req, res) => {
+    try {
+        const userId = req.user.id; // Получаем ID пользователя из JWT токена
+        const history = await getChatHistory(userId);
+        res.json(history);
+    } catch (error) {
+        console.error('Error in getUserChatHistory:', error);
+        res.status(500).json({ 
+            message: 'Ошибка при получении истории чата',
+            error: error.message 
+        });
+    }
 }; 

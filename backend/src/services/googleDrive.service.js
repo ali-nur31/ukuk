@@ -227,10 +227,70 @@ const getOrCreateChatFolder = async (folderName) => {
   }
 };
 
+// Получение истории чата из Google Drive
+const getChatHistory = async (userId) => {
+  try {
+    // Получаем ID папки с историей чата
+    const folderName = `chat_history_${userId}`;
+    const response = await drive.files.list({
+      q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID}' in parents and trashed=false`,
+      fields: 'files(id, name)',
+    });
+
+    if (response.data.files.length === 0) {
+      return []; // Возвращаем пустой массив, если папка не найдена
+    }
+
+    const folderId = response.data.files[0].id;
+
+    // Получаем все файлы в папке
+    const filesResponse = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType='application/json' and trashed=false`,
+      orderBy: 'createdTime desc',
+      fields: 'files(id, name, createdTime)',
+    });
+
+    // Получаем содержимое каждого файла
+    const chatHistory = await Promise.all(
+      filesResponse.data.files.map(async (file) => {
+        try {
+          const fileResponse = await drive.files.get({
+            fileId: file.id,
+            alt: 'media',
+          });
+          
+          // Проверяем, является ли ответ строкой или уже объектом
+          const fileData = typeof fileResponse.data === 'string' 
+            ? JSON.parse(fileResponse.data)
+            : fileResponse.data;
+
+          return {
+            id: file.id,
+            timestamp: file.createdTime,
+            ...fileData
+          };
+        } catch (fileError) {
+          console.error(`Error processing file ${file.id}:`, fileError);
+          return null; // Пропускаем файлы с ошибками
+        }
+      })
+    );
+
+    // Фильтруем null значения и сортируем по времени
+    return chatHistory
+      .filter(chat => chat !== null)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  } catch (error) {
+    console.error('Error getting chat history:', error);
+    throw new Error('Failed to get chat history from Google Drive');
+  }
+};
+
 module.exports = {
   upload,
   uploadToGoogleDrive,
   deleteFromGoogleDrive,
   deleteProfessionalFolder,
   saveChatHistory,
+  getChatHistory,
 }; 

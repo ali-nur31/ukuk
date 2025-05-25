@@ -18,4 +18,7 @@ router.put('/read/:senderId', protect, chatController.markMessagesAsRead);
 // Эндпоинт для отправки вопроса AI
 router.post('/query', protect, chatController.query);
 
+// Получение истории чата из Google Drive (требуется авторизация)
+router.get('/drive-history', protect, chatController.getUserChatHistory);
+
 module.exports = router; 
