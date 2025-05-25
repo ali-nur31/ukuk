@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   List,
   ListItem,
@@ -8,29 +9,55 @@ import {
   Box,
   Divider,
   IconButton,
-  Collapse
+  Collapse,
+  CircularProgress
 } from '@mui/material';
 import { 
   Chat as ChatIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
+import { getChatHistory } from '../api';
 
-const AiChatHistory = ({ chats, onChatSelect, selectedChatId }) => {
+const AiChatHistory = () => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      try {
+        const history = await getChatHistory();
+        setChats(history);
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchChatHistory();
+  }, []);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
 
-  // Оставляем только заглушку
-  const chatsWithPlaceholder = [
-    {
-      id: '/',
-      title: 'Кылмыштар кандай учурларда пайда болот?',
-      lastMessage: 'Кылмыштардын пайда болушунун негизги себептери...'
-    }
-  ];
+  const formatDate = (timestamp) => {
+    return new Date(timestamp).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleChatClick = (chatId) => {
+    navigate(`/chat/${chatId}`);
+  };
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -64,44 +91,50 @@ const AiChatHistory = ({ chats, onChatSelect, selectedChatId }) => {
         </IconButton>
       </Box>
       <Collapse in={isExpanded}>
-        <List sx={{ py: 0 }}>
-          {chatsWithPlaceholder.map((chat) => (
-            <React.Fragment key={chat.id}>
-              <ListItem
-                button
-                onClick={() => onChatSelect(chat.id)}
-                selected={selectedChatId === chat.id}
-                sx={{
-                  py: 1,
-                  px: 2,
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.light + 20',
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : error ? (
+          <Typography color="error" sx={{ px: 2, py: 1 }}>
+            {error}
+          </Typography>
+        ) : (
+          <List sx={{ py: 0 }}>
+            {chats.map((chat) => (
+              <React.Fragment key={chat.id}>
+                <ListItem
+                  button
+                  onClick={() => handleChatClick(chat.id)}
+                  sx={{
+                    py: 1,
+                    px: 2,
                     '&:hover': {
-                      backgroundColor: 'primary.light + 30',
+                      backgroundColor: 'primary.light + 20',
                     },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <ChatIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={chat.title || 'Жаңы сүйлөшүү'}
-                  secondary={chat.lastMessage}
-                  primaryTypographyProps={{
-                    variant: 'body2',
-                    noWrap: true,
                   }}
-                  secondaryTypographyProps={{
-                    variant: 'caption',
-                    noWrap: true,
-                  }}
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </React.Fragment>
-          ))}
-        </List>
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <ChatIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={chat.question}
+                    secondary={formatDate(chat.timestamp)}
+                    primaryTypographyProps={{
+                      variant: 'body2',
+                      noWrap: true,
+                    }}
+                    secondaryTypographyProps={{
+                      variant: 'caption',
+                      noWrap: true,
+                    }}
+                  />
+                </ListItem>
+                <Divider variant="inset" component="li" />
+              </React.Fragment>
+            ))}
+          </List>
+        )}
       </Collapse>
     </Box>
   );

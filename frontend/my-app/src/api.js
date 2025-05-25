@@ -275,4 +275,14 @@ export const uploadProfilePhoto = async (professionalId, file) => {
   return response.data;
 };
 
+// Chat endpoints
+export const getChatHistory = async () => {
+    try {
+        const response = await api.get('/chat/drive-history');
+        return response.data;
+    } catch (error) {
+        handleApiError(error);
+    }
+};
+
 export default api;

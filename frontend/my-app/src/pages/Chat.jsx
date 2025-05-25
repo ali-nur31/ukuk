@@ -341,6 +341,12 @@ const Chat = () => {
                             onChange={e => setNewMessage(e.target.value)}
                             placeholder="Билдирүү жазыңыз..."
                             style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #ccc', marginRight: 8 }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSend(e);
+                                }
+                            }}
                         />
                         <button type="submit" style={{ padding: '8px 16px', borderRadius: 4, background: '#1976d2', color: '#fff', border: 'none' }}>Жөнөтүү</button>
                     </form>

@@ -113,7 +113,7 @@ exports.markMessagesAsRead = async (req, res) => {
 // Эндпоинт для отправки вопроса AI
 exports.query = async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, isNewChat } = req.body;
     const userId = req.user.id;
 
     if (!question) {
@@ -124,7 +124,7 @@ exports.query = async (req, res) => {
     const answer = await aiService.getAnswer(question);
 
     // Сохраняем историю в Google Drive
-    await saveChatHistory(userId, question, answer);
+    await saveChatHistory(userId, question, answer, isNewChat);
 
     // Отправляем ответ клиенту
     res.json({ answer });

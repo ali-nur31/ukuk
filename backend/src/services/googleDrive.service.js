@@ -158,37 +158,89 @@ const deleteProfessionalFolder = async (professionalId) => {
   }
 };
 
+// Создание нового файла чата
+const createNewChatFile = async (folderId) => {
+  const fileMetadata = {
+    name: `chat_${Date.now()}.json`,
+    parents: [folderId],
+    mimeType: 'application/json',
+  };
+
+  const media = {
+    mimeType: 'application/json',
+    body: JSON.stringify([], null, 2),
+  };
+
+  const file = await drive.files.create({
+    resource: fileMetadata,
+    media: media,
+    fields: 'id',
+  });
+
+  return file.data.id;
+};
+
 // Сохранение истории чата в Google Drive
-const saveChatHistory = async (userId, question, answer) => {
+const saveChatHistory = async (userId, question, answer, isNewChat = false) => {
   try {
     // Создаем или получаем папку для истории чата пользователя
     const folderName = `chat_history_${userId}`;
     let folderId = await getOrCreateChatFolder(folderName);
 
-    const fileMetadata = {
-      name: `chat_${Date.now()}.json`,
-      parents: [folderId],
-      mimeType: 'application/json',
-    };
+    let fileId;
+    let chatData = [];
 
-    const chatData = {
+    if (!isNewChat) {
+      // Ищем последний файл чата в папке
+      const response = await drive.files.list({
+        q: `'${folderId}' in parents and mimeType='application/json' and trashed=false`,
+        orderBy: 'createdTime desc',
+        pageSize: 1,
+        fields: 'files(id, name)',
+      });
+
+      if (response.data.files.length > 0) {
+        // Если файл существует, получаем его содержимое
+        const file = response.data.files[0];
+        fileId = file.id;
+        
+        const fileResponse = await drive.files.get({
+          fileId: fileId,
+          alt: 'media',
+        });
+        
+        // Проверяем, является ли ответ строкой или уже объектом
+        const parsedData = typeof fileResponse.data === 'string' 
+          ? JSON.parse(fileResponse.data)
+          : fileResponse.data;
+
+        // Убеждаемся, что chatData является массивом
+        chatData = Array.isArray(parsedData) ? parsedData : [parsedData];
+      }
+    }
+
+    // Если это новый чат или файл не найден, создаем новый файл
+    if (isNewChat || !fileId) {
+      fileId = await createNewChatFile(folderId);
+    }
+
+    // Добавляем новое сообщение
+    chatData.push({
       timestamp: new Date().toISOString(),
       question,
       answer
-    };
-
-    const media = {
-      mimeType: 'application/json',
-      body: JSON.stringify(chatData, null, 2),
-    };
-
-    const file = await drive.files.create({
-      resource: fileMetadata,
-      media: media,
-      fields: 'id',
     });
 
-    return file.data.id;
+    // Обновляем файл
+    await drive.files.update({
+      fileId: fileId,
+      media: {
+        mimeType: 'application/json',
+        body: JSON.stringify(chatData, null, 2),
+      },
+    });
+
+    return fileId;
   } catch (error) {
     console.error('Error saving chat history:', error);
     throw new Error('Failed to save chat history to Google Drive');

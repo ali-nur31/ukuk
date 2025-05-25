@@ -11,6 +11,7 @@ import Register from './components/Auth/Register';
 import Account from './pages/Account';
 import Specialists from './pages/Specialists';
 import Chat from './pages/Chat';
+import ChatHistory from './pages/ChatHistory';
 import './styles/main.scss';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
               />
               <Route path="/specialists" element={<Specialists />} />
               <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+              <Route path="/chat/:chatId" element={<ProtectedRoute><ChatHistory /></ProtectedRoute>} />
             </Routes>
           </div>
         </main>
