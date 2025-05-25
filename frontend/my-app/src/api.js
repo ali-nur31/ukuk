@@ -171,7 +171,7 @@ export const deleteUser = async (id) => {
 // Professional endpoints
 export const getAllProfessionals = async (params = {}) => {
     try {
-        const response = await api.get('/professionals', { params });
+        const response = await api.get('/professionals', { params: { limit: 1000, ...params } });
         return response.data;
     } catch (error) {
         handleApiError(error);

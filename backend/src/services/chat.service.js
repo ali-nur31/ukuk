@@ -14,12 +14,12 @@ exports.getChatHistory = async (userId1, userId2, limit = 50, offset = 0) => {
       {
         model: User,
         as: 'sender',
-        attributes: ['id', 'firstName', 'lastName']
+        attributes: ['id', 'firstName', 'lastName', 'role']
       },
       {
         model: User,
         as: 'receiver',
-        attributes: ['id', 'firstName', 'lastName']
+        attributes: ['id', 'firstName', 'lastName', 'role']
       }
     ],
     order: [['createdAt', 'DESC']],
@@ -33,7 +33,27 @@ exports.sendMessage = async (senderId, receiverId, content) => {
   return await Message.create({
     senderId,
     receiverId,
-    content
+    content,
+    isRead: false
+  });
+};
+
+// Получить сообщение по ID
+exports.getMessageById = async (messageId) => {
+  return await Message.findOne({
+    where: { id: messageId },
+    include: [
+      {
+        model: User,
+        as: 'sender',
+        attributes: ['id', 'firstName', 'lastName', 'role']
+      },
+      {
+        model: User,
+        as: 'receiver',
+        attributes: ['id', 'firstName', 'lastName', 'role']
+      }
+    ]
   });
 };
 
@@ -65,9 +85,9 @@ exports.getUnreadMessages = async (userId) => {
       {
         model: User,
         as: 'sender',
-        attributes: ['id', 'firstName', 'lastName']
+        attributes: ['id', 'firstName', 'lastName', 'role']
       }
     ],
     order: [['createdAt', 'DESC']]
   });
-}; 
+};

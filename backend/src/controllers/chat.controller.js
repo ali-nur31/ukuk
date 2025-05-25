@@ -35,6 +35,7 @@ exports.sendMessage = async (req, res) => {
     // Получаем отправителя и получателя
     const sender = await User.findByPk(req.user.id);
     const receiver = await User.findByPk(receiverId);
+    
     if (!receiver) {
       return res.status(404).json({ message: 'Receiver not found' });
     }
@@ -53,8 +54,14 @@ exports.sendMessage = async (req, res) => {
         ]
       }
     });
-    if (existingMessages === 0 && sender.role !== 'user') {
-      return res.status(403).json({ message: 'Only a user can initiate a conversation with a professional' });
+
+    // Если это первый диалог, проверяем, что инициатор - пользователь
+    if (existingMessages === 0) {
+      if (sender.role !== 'user') {
+        return res.status(403).json({ 
+          message: 'Only a user can initiate a conversation with a professional' 
+        });
+      }
     }
 
     const message = await chatService.sendMessage(
@@ -70,12 +77,12 @@ exports.sendMessage = async (req, res) => {
         {
           model: User,
           as: 'sender',
-          attributes: ['id', 'firstName', 'lastName']
+          attributes: ['id', 'firstName', 'lastName', 'role']
         },
         {
           model: User,
           as: 'receiver',
-          attributes: ['id', 'firstName', 'lastName']
+          attributes: ['id', 'firstName', 'lastName', 'role']
         }
       ]
     });
