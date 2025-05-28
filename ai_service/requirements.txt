@@ -1,8 +1,0 @@
-flask
-python-docx
-numpy
-scikit-learn
-google-generativeai 
-google.genai
-dotenv
-flask-cors
