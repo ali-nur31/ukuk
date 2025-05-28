@@ -3,11 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://ali-nur31.github.io/ukuk",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "rm -rf dist && npm run build && touch dist/.nojekyll",
+    "deploy": "gh-pages -d dist --dotfiles --no-history"
   },
   "dependencies": {
     "@emotion/react": "^11.11.3",
@@ -30,6 +33,7 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "gh-pages": "^6.3.0",
     "vite": "^5.1.3"
   }
 }
